@@ -164,8 +164,10 @@ const create = withAuth(
 );
 
 // GET Patient by ID
+// GET Patient by ID
 const getById = withAuth(
-  requireAnyRole(["receptionist", "nurse", "doctor", "admin"])(
+  requireAnyRole(["receptionist", "nurse", "doctor"])(
+    // ✅ BỎ 'admin'
     withAuditLog(
       "READ",
       "patients"
@@ -183,45 +185,24 @@ const getById = withAuth(
           return forbidden("You do not have permission to access this patient");
         }
 
-        // Query based on role
-        let query;
-        if (user.role === "receptionist") {
-          // Receptionist: Only administrative data
-          query = `
-              SELECT 
-                patient_id,
-                full_name,
-                date_of_birth,
-                gender,
-                phone,
-                email,
-                address,
-                city,
-                created_at,
-                updated_at
-              FROM patients
-              WHERE patient_id = $1 AND is_active = true
-            `;
-        } else {
-          // Doctor, Nurse, Admin: Full data including encrypted fields
-          query = `
-              SELECT 
-                patient_id,
-                full_name,
-                date_of_birth,
-                gender,
-                phone,
-                email,
-                address,
-                city,
-                national_id_encrypted,
-                insurance_number_encrypted,
-                created_at,
-                updated_at
-              FROM patients
-              WHERE patient_id = $1 AND is_active = true
-            `;
-        }
+        // ✅ THAY ĐỔI: TẤT CẢ vai trò đều xem được encrypted fields
+        const query = `
+            SELECT 
+              patient_id,
+              full_name,
+              date_of_birth,
+              gender,
+              phone,
+              email,
+              address,
+              city,
+              national_id_encrypted,
+              insurance_number_encrypted,
+              created_at,
+              updated_at
+            FROM patients
+            WHERE patient_id = $1 AND is_active = true
+          `;
 
         const result = await db.query(query, [patientId]);
 
@@ -231,22 +212,22 @@ const getById = withAuth(
 
         const patient = result.rows[0];
 
-        // Decrypt sensitive fields for authorized roles
-        if (
-          patient.national_id_encrypted &&
-          ["doctor", "admin"].includes(user.role)
-        ) {
+        // ✅ THAY ĐỔI: Giải mã cho Doctor, Nurse, Receptionist
+        const { canViewSensitiveID } = require("../middleware/rbac");
+
+        if (patient.national_id_encrypted && canViewSensitiveID(user)) {
           patient.national_id = decrypt(patient.national_id_encrypted);
+          delete patient.national_id_encrypted;
+        } else {
           delete patient.national_id_encrypted;
         }
 
-        if (
-          patient.insurance_number_encrypted &&
-          ["doctor", "nurse", "admin"].includes(user.role)
-        ) {
+        if (patient.insurance_number_encrypted && canViewSensitiveID(user)) {
           patient.insurance_number = decrypt(
             patient.insurance_number_encrypted
           );
+          delete patient.insurance_number_encrypted;
+        } else {
           delete patient.insurance_number_encrypted;
         }
 
@@ -261,7 +242,8 @@ const getById = withAuth(
 
 // SEARCH Patients
 const search = withAuth(
-  requireAnyRole(["receptionist", "nurse", "doctor", "admin"])(
+  requireAnyRole(["receptionist", "nurse", "doctor"])(
+    // ✅ BỎ 'admin'
     withAuditLog(
       "SEARCH",
       "patients"
@@ -310,18 +292,17 @@ const search = withAuth(
           paramCount++;
         }
 
-        // Only doctors and admins can search by CCCD/BHYT
-        if (national_id && ["doctor", "admin"].includes(user.role)) {
+        // ✅ THAY ĐỔI: Doctor, Nurse, Receptionist đều có thể search theo CCCD/BHYT
+        const { canViewSensitiveID } = require("../middleware/rbac");
+
+        if (national_id && canViewSensitiveID(user)) {
           const encrypted = encrypt(national_id);
           conditions.push(`national_id_encrypted = $${paramCount}`);
           values.push(encrypted);
           paramCount++;
         }
 
-        if (
-          insurance_number &&
-          ["doctor", "nurse", "admin"].includes(user.role)
-        ) {
+        if (insurance_number && canViewSensitiveID(user)) {
           const encrypted = encrypt(insurance_number);
           conditions.push(`insurance_number_encrypted = $${paramCount}`);
           values.push(encrypted);
@@ -369,7 +350,7 @@ const search = withAuth(
 
 // UPDATE Patient (Receptionist and Admin only)
 const update = withAuth(
-  requireAnyRole(["receptionist", "admin"])(
+  requireAnyRole(["receptionist"])(
     withAuditLog(
       "UPDATE",
       "patients"

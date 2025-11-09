@@ -17,10 +17,28 @@ const logAction = async ({
   errorMessage = null,
 }) => {
   try {
-    // ✅ THÊM: Timeout promise
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error("Audit log timeout after 3s")), 3000)
     );
+
+    // ✅ FIX: Nếu userId là Cognito sub, convert sang database user_id
+    let dbUserId = userId;
+
+    if (userId && userId.length > 36) {
+      // Cognito sub format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx-xxxxxxxxxx (dài hơn UUID)
+      // Hoặc check nếu userId không phải UUID format chuẩn
+      const userQuery = await db.query(
+        "SELECT user_id FROM users WHERE cognito_sub = $1",
+        [userId]
+      );
+
+      if (userQuery.rows.length > 0) {
+        dbUserId = userQuery.rows[0].user_id;
+      } else {
+        console.warn("User not found in database for cognito_sub:", userId);
+        dbUserId = null; // Cho phép null nếu không tìm thấy
+      }
+    }
 
     const queryText = `
       INSERT INTO audit_logs (
@@ -41,7 +59,7 @@ const logAction = async ({
     `;
 
     const values = [
-      userId,
+      dbUserId, // ✅ Dùng database user_id thay vì cognito_sub
       userEmail,
       userRole,
       action,
@@ -55,13 +73,11 @@ const logAction = async ({
       errorMessage,
     ];
 
-    // ✅ Race between query and timeout
     const logPromise = db.query(queryText, values);
     const result = await Promise.race([logPromise, timeoutPromise]);
 
     return result.rows[0];
   } catch (error) {
-    // ✅ Don't throw - just log error
     console.error("Failed to log audit entry:", error.message);
     return null;
   }
@@ -83,7 +99,7 @@ const getUserAgent = (event) => {
   );
 };
 
-// Wrapper to automatically log actions
+// ✅ FIX: Wrapper tự động lấy user_id từ database
 const withAuditLog = (action, resourceType) => {
   return (handler) => {
     return async (event) => {
@@ -94,8 +110,21 @@ const withAuditLog = (action, resourceType) => {
       let status = "success";
       let errorMessage = null;
       let resourceId = null;
+      let dbUserId = null;
 
       try {
+        // ✅ Lấy database user_id trước khi chạy handler
+        if (user?.sub) {
+          const userQuery = await db.query(
+            "SELECT user_id FROM users WHERE cognito_sub = $1",
+            [user.sub]
+          );
+
+          if (userQuery.rows.length > 0) {
+            dbUserId = userQuery.rows[0].user_id;
+          }
+        }
+
         result = await handler(event);
 
         // Extract resource ID from response if available
@@ -103,7 +132,11 @@ const withAuditLog = (action, resourceType) => {
           try {
             const body = JSON.parse(result.body);
             resourceId =
-              body.data?.id || body.data?.patient_id || body.data?.record_id;
+              body.data?.id ||
+              body.data?.patient_id ||
+              body.data?.record_id ||
+              body.data?.vital_id ||
+              body.data?.prescription_id;
           } catch (e) {
             // Ignore parsing errors
           }
@@ -115,15 +148,15 @@ const withAuditLog = (action, resourceType) => {
         errorMessage = error.message;
         throw error;
       } finally {
-        // ✅ Log action (non-blocking)
+        // Log action (non-blocking)
         logAction({
-          userId: user?.sub,
+          userId: dbUserId, // ✅ Dùng database user_id
           userEmail: user?.email,
           userRole: user?.role,
           action,
           resourceType,
           resourceId,
-          patientId: event.pathParameters?.patientId || event.body?.patient_id,
+          patientId: event.pathParameters?.patientId || null,
           ipAddress: getIpAddress(event),
           userAgent: getUserAgent(event),
           requestData: {
@@ -134,7 +167,6 @@ const withAuditLog = (action, resourceType) => {
           status,
           errorMessage,
         }).catch((err) => {
-          // Silently catch audit log errors
           console.error("Audit log failed:", err.message);
         });
       }
