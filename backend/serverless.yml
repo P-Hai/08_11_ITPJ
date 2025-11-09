@@ -1,0 +1,183 @@
+service: ehr-backend-api
+
+frameworkVersion: '3'
+
+# ✅ THÊM PHẦN NÀY
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ap-southeast-1
+  stage: ${opt:stage, 'dev'}
+  memorySize: 512
+  timeout: 30
+  
+  environment:
+    USER_POOL_ID: ${env:USER_POOL_ID}
+    CLIENT_ID: ${env:CLIENT_ID}
+    REGION: ${env:REGION}
+    DB_HOST: ${env:DB_HOST}
+    DB_PORT: ${env:DB_PORT}
+    DB_NAME: ${env:DB_NAME}
+    DB_USER: ${env:DB_USER}
+    DB_PASSWORD: ${env:DB_PASSWORD}
+    NODE_ENV: ${self:provider.stage}
+  
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - cognito-idp:AdminGetUser
+            - cognito-idp:ListUsers
+          Resource: 
+            - arn:aws:cognito-idp:${self:provider.region}:*:userpool/${env:USER_POOL_ID}
+        - Effect: Allow
+          Action:
+            - secretsmanager:GetSecretValue
+          Resource:
+            - arn:aws:secretsmanager:${self:provider.region}:*:secret:ehr-system/*
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: '*'
+
+  httpApi:
+    cors:
+      allowedOrigins:
+        - '*'
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+
+plugins:
+  - serverless-offline
+  - serverless-dotenv-plugin
+functions:
+  # Authentication
+  login:
+    handler: handlers/auth.login
+    events:
+      - httpApi:
+          path: /auth/login
+          method: post
+
+  changePassword:
+    handler: handlers/auth.changePassword
+    events:
+      - httpApi:
+          path: /auth/change-password
+          method: post
+
+  refreshToken:
+    handler: handlers/auth.refreshToken
+    events:
+      - httpApi:
+          path: /auth/refresh
+          method: post
+
+  # Patients - Receptionist
+  createPatient:
+    handler: handlers/patients.create
+    events:
+      - httpApi:
+          path: /patients
+          method: post
+  
+  getPatient:
+    handler: handlers/patients.getById
+    events:
+      - httpApi:
+          path: /patients/{id}
+          method: get
+  
+  searchPatients:
+    handler: handlers/patients.search
+    events:
+      - httpApi:
+          path: /patients/search
+          method: get
+  
+  updatePatient:
+    handler: handlers/patients.update
+    events:
+      - httpApi:
+          path: /patients/{id}
+          method: put
+
+  # Vital Signs - Nurse
+  createVitalSigns:
+    handler: handlers/vitalSigns.create
+    events:
+      - httpApi:
+          path: /vital-signs
+          method: post
+  
+  getVitalSigns:
+    handler: handlers/vitalSigns.getByPatient
+    events:
+      - httpApi:
+          path: /vital-signs/patient/{patientId}
+          method: get
+
+  # Medical Records - Doctor
+  createMedicalRecord:
+    handler: handlers/medicalRecords.create
+    events:
+      - httpApi:
+          path: /medical-records
+          method: post
+  
+  getMedicalRecord:
+    handler: handlers/medicalRecords.getById
+    events:
+      - httpApi:
+          path: /medical-records/{id}
+          method: get
+  
+  getMedicalRecordsByPatient:
+    handler: handlers/medicalRecords.getByPatient
+    events:
+      - httpApi:
+          path: /medical-records/patient/{patientId}
+          method: get
+
+  # Prescriptions - Doctor
+  createPrescription:
+    handler: handlers/prescriptions.create
+    events:
+      - httpApi:
+          path: /prescriptions
+          method: post
+  
+  getPrescription:
+    handler: handlers/prescriptions.getById
+    events:
+      - httpApi:
+          path: /prescriptions/{id}
+          method: get
+
+  # Audit Logs - Admin
+  getAuditLogs:
+    handler: handlers/auditLogs.getLogs
+    events:
+      - httpApi:
+          path: /audit-logs
+          method: get
+
+package:
+  individually: false
+  exclude:
+    - .git/**
+    - .env
+    - node_modules/**
+    - test/**
