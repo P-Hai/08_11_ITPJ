@@ -1,8 +1,7 @@
 service: ehr-backend-api
 
-frameworkVersion: '3'
+frameworkVersion: "3"
 
-# ✅ THÊM PHẦN NÀY
 useDotenv: true
 
 provider:
@@ -12,7 +11,15 @@ provider:
   stage: ${opt:stage, 'dev'}
   memorySize: 512
   timeout: 30
-  
+
+  # vpc:
+  #   securityGroupIds:
+  #     - sg-0f4696ad446117ed0
+  #   subnetIds:
+  #     - subnet-0882e47657d7fc7d1
+  #     - subnet-012a9f51911f66e1e
+  #     - subnet-09f7d6fa44a3aea44
+
   environment:
     USER_POOL_ID: ${env:USER_POOL_ID}
     CLIENT_ID: ${env:CLIENT_ID}
@@ -23,7 +30,7 @@ provider:
     DB_USER: ${env:DB_USER}
     DB_PASSWORD: ${env:DB_PASSWORD}
     NODE_ENV: ${self:provider.stage}
-  
+
   iam:
     role:
       statements:
@@ -31,7 +38,13 @@ provider:
           Action:
             - cognito-idp:AdminGetUser
             - cognito-idp:ListUsers
-          Resource: 
+            - cognito-idp:AdminCreateUser
+            - cognito-idp:AdminAddUserToGroup
+            - cognito-idp:AdminDisableUser
+            - cognito-idp:AdminSetUserPassword
+            - cognito-idp:AdminInitiateAuth
+            - cognito-idp:AdminRespondToAuthChallenge
+          Resource:
             - arn:aws:cognito-idp:${self:provider.region}:*:userpool/${env:USER_POOL_ID}
         - Effect: Allow
           Action:
@@ -43,12 +56,12 @@ provider:
             - logs:CreateLogGroup
             - logs:CreateLogStream
             - logs:PutLogEvents
-          Resource: '*'
+          Resource: "*"
 
   httpApi:
     cors:
       allowedOrigins:
-        - '*'
+        - "*"
       allowedHeaders:
         - Content-Type
         - Authorization
@@ -62,6 +75,7 @@ provider:
 plugins:
   - serverless-offline
   - serverless-dotenv-plugin
+
 functions:
   # Authentication
   login:
@@ -85,28 +99,86 @@ functions:
           path: /auth/refresh
           method: post
 
-  # Patients - Receptionist
+  # Admin User Management
+  createUser:
+    handler: handlers/users.createUser
+    events:
+      - httpApi:
+          path: /users
+          method: post
+
+  listUsers:
+    handler: handlers/users.listUsers
+    events:
+      - httpApi:
+          path: /users
+          method: get
+
+  disableUser:
+    handler: handlers/users.disableUser
+    events:
+      - httpApi:
+          path: /users/{id}/disable
+          method: put
+
+  resetUserPassword:
+    handler: handlers/users.resetPassword
+    events:
+      - httpApi:
+          path: /users/{id}/reset-password
+          method: post
+
+  # Patient Portal
+  getMyProfile:
+    handler: handlers/patientPortal.getMyProfile
+    events:
+      - httpApi:
+          path: /patients/me
+          method: get
+
+  getMyMedicalRecords:
+    handler: handlers/patientPortal.getMyMedicalRecords
+    events:
+      - httpApi:
+          path: /medical-records/me
+          method: get
+
+  getMyPrescriptions:
+    handler: handlers/patientPortal.getMyPrescriptions
+    events:
+      - httpApi:
+          path: /prescriptions/me
+          method: get
+
+  getMyVitalSigns:
+    handler: handlers/patientPortal.getMyVitalSigns
+    events:
+      - httpApi:
+          path: /vital-signs/me
+          method: get
+
+  # Patients
   createPatient:
     handler: handlers/patients.create
     events:
       - httpApi:
           path: /patients
           method: post
-  
+
   getPatient:
     handler: handlers/patients.getById
     events:
       - httpApi:
           path: /patients/{id}
           method: get
-  
+
   searchPatients:
     handler: handlers/patients.search
     events:
       - httpApi:
           path: /patients/search
           method: get
-  
+
   updatePatient:
     handler: handlers/patients.update
     events:
@@ -114,14 +186,14 @@ functions:
           path: /patients/{id}
           method: put
 
-  # Vital Signs - Nurse
+  # Vital Signs
   createVitalSigns:
     handler: handlers/vitalSigns.create
     events:
       - httpApi:
           path: /vital-signs
           method: post
-  
+
   getVitalSigns:
     handler: handlers/vitalSigns.getByPatient
     events:
@@ -129,52 +201,6 @@ functions:
           path: /vital-signs/patient/{patientId}
           method: get
 
-  # Medical Records - Doctor
-  createMedicalRecord:
-    handler: handlers/medicalRecords.create
-    events:
-      - httpApi:
-          path: /medical-records
-          method: post
-  
-  getMedicalRecord:
-    handler: handlers/medicalRecords.getById
-    events:
-      - httpApi:
-          path: /medical-records/{id}
-          method: get
-  
-  getMedicalRecordsByPatient:
-    handler: handlers/medicalRecords.getByPatient
-    events:
-      - httpApi:
-          path: /medical-records/patient/{patientId}
-          method: get
-
-  # Prescriptions - Doctor
-  createPrescription:
-    handler: handlers/prescriptions.create
-    events:
-      - httpApi:
-          path: /prescriptions
-          method: post
-  
-  getPrescription:
-    handler: handlers/prescriptions.getById
-    events:
-      - httpApi:
-          path: /prescriptions/{id}
-          method: get
-
-  # Audit Logs - Admin
-  getAuditLogs:
-    handler: handlers/auditLogs.getLogs
-    events:
-      - httpApi:
-          path: /audit-logs
-          method: get
-
-# Vital Signs - Nurse (THÊM VÀO CUỐI SECTION VITAL SIGNS)
   getLatestVitalSigns:
     handler: handlers/vitalSigns.getLatest
     events:
@@ -182,7 +208,28 @@ functions:
           path: /vital-signs/patient/{patientId}/latest
           method: get
 
-  # Medical Records - UPDATE
+  # Medical Records
+  createMedicalRecord:
+    handler: handlers/medicalRecords.create
+    events:
+      - httpApi:
+          path: /medical-records
+          method: post
+
+  getMedicalRecord:
+    handler: handlers/medicalRecords.getById
+    events:
+      - httpApi:
+          path: /medical-records/{id}
+          method: get
+
+  getMedicalRecordsByPatient:
+    handler: handlers/medicalRecords.getByPatient
+    events:
+      - httpApi:
+          path: /medical-records/patient/{patientId}
+          method: get
+
   updateMedicalRecord:
     handler: handlers/medicalRecords.update
     events:
@@ -190,7 +237,21 @@ functions:
           path: /medical-records/{id}
           method: put
 
-  # Prescriptions - GET by Patient
+  # Prescriptions
+  createPrescription:
+    handler: handlers/prescriptions.create
+    events:
+      - httpApi:
+          path: /prescriptions
+          method: post
+
+  getPrescription:
+    handler: handlers/prescriptions.getById
+    events:
+      - httpApi:
+          path: /prescriptions/{id}
+          method: get
+
   getPrescriptionsByPatient:
     handler: handlers/prescriptions.getByPatient
     events:
@@ -198,10 +259,18 @@ functions:
           path: /prescriptions/patient/{patientId}
           method: get
 
+  # Audit Logs
+  getAuditLogs:
+    handler: handlers/auditLogs.getLogs
+    events:
+      - httpApi:
+          path: /audit-logs
+          method: get
+
 package:
   individually: false
-  exclude:
-    - .git/**
-    - .env
-    - node_modules/**
-    - test/**
+  patterns:
+    - "!.git/**"
+    - "!test/**"
+    - "!.env.example"
+    - "!README.md"

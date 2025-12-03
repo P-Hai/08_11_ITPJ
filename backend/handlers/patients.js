@@ -48,10 +48,9 @@ const decrypt = (text) => {
   }
 };
 
-// CREATE Patient (Receptionist only)
-// CREATE Patient (Receptionist only)
+// CREATE Patient (Receptionist only) - ✅ FIX BUG 2: Removed 'admin'
 const create = withAuth(
-  requireAnyRole(["receptionist", "admin"])(
+  requireAnyRole(["receptionist"])(
     withAuditLog(
       "CREATE",
       "patients"
@@ -80,7 +79,7 @@ const create = withAuth(
           });
         }
 
-        // ✅ THÊM: Lấy user_id từ cognito_sub
+        // Lấy user_id từ cognito_sub
         const userQuery = await db.query(
           "SELECT user_id FROM users WHERE cognito_sub = $1",
           [user.sub]
@@ -137,7 +136,7 @@ const create = withAuth(
           body.city || null,
           nationalIdEncrypted,
           insuranceNumberEncrypted,
-          userId, // ✅ Dùng user_id thay vì user.sub
+          userId,
         ];
 
         const result = await db.query(query, values);
@@ -148,12 +147,10 @@ const create = withAuth(
         console.error("Create patient error:", err);
 
         if (err.code === "23505") {
-          // Unique violation
           return error("Patient with this information already exists", 409);
         }
 
         if (err.code === "23503") {
-          // Foreign key violation
           return error("Foreign key constraint violation", 400, err.message);
         }
 
@@ -163,11 +160,9 @@ const create = withAuth(
   )
 );
 
-// GET Patient by ID
-// GET Patient by ID
+// GET Patient by ID - ✅ Admin removed
 const getById = withAuth(
   requireAnyRole(["receptionist", "nurse", "doctor"])(
-    // ✅ BỎ 'admin'
     withAuditLog(
       "READ",
       "patients"
@@ -185,7 +180,6 @@ const getById = withAuth(
           return forbidden("You do not have permission to access this patient");
         }
 
-        // ✅ THAY ĐỔI: TẤT CẢ vai trò đều xem được encrypted fields
         const query = `
             SELECT 
               patient_id,
@@ -212,7 +206,7 @@ const getById = withAuth(
 
         const patient = result.rows[0];
 
-        // ✅ THAY ĐỔI: Giải mã cho Doctor, Nurse, Receptionist
+        // Giải mã cho Doctor, Nurse, Receptionist
         const { canViewSensitiveID } = require("../middleware/rbac");
 
         if (patient.national_id_encrypted && canViewSensitiveID(user)) {
@@ -240,10 +234,9 @@ const getById = withAuth(
   )
 );
 
-// SEARCH Patients
+// SEARCH Patients - ✅ Admin removed
 const search = withAuth(
   requireAnyRole(["receptionist", "nurse", "doctor"])(
-    // ✅ BỎ 'admin'
     withAuditLog(
       "SEARCH",
       "patients"
@@ -292,7 +285,6 @@ const search = withAuth(
           paramCount++;
         }
 
-        // ✅ THAY ĐỔI: Doctor, Nurse, Receptionist đều có thể search theo CCCD/BHYT
         const { canViewSensitiveID } = require("../middleware/rbac");
 
         if (national_id && canViewSensitiveID(user)) {
@@ -348,7 +340,7 @@ const search = withAuth(
   )
 );
 
-// UPDATE Patient (Receptionist and Admin only)
+// UPDATE Patient (Receptionist only)
 const update = withAuth(
   requireAnyRole(["receptionist"])(
     withAuditLog(

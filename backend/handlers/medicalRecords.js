@@ -16,6 +16,25 @@ const {
 } = require("../middleware/rbac");
 const { withAuditLog } = require("../utils/auditLog");
 
+// ✅ FIX BUG 1: Di chuyển hàm createDiagnosisSummary lên đầu file
+const createDiagnosisSummary = (fullDiagnosis) => {
+  if (!fullDiagnosis) return null;
+
+  // Lấy 100 ký tự đầu hoặc câu đầu tiên
+  const maxLength = 100;
+  if (fullDiagnosis.length <= maxLength) {
+    return fullDiagnosis;
+  }
+
+  // Tìm dấu chấm, phẩy hoặc xuống dòng đầu tiên
+  const firstSentenceEnd = fullDiagnosis.search(/[.。,，\n]/);
+  if (firstSentenceEnd > 0 && firstSentenceEnd <= maxLength) {
+    return fullDiagnosis.substring(0, firstSentenceEnd + 1) + " (...)";
+  }
+
+  return fullDiagnosis.substring(0, maxLength) + "...";
+};
+
 // Encryption helpers (same as patients.js)
 const encrypt = (text) => {
   const algorithm = "aes-256-cbc";
@@ -162,7 +181,6 @@ const create = withAuth(
 // GET Medical Record by ID
 const getById = withAuth(
   requireAnyRole(["doctor", "nurse"])(
-    // ✅ BỎ 'admin'
     withAuditLog(
       "READ",
       "medical_records"
@@ -204,7 +222,7 @@ const getById = withAuth(
 
         const record = result.rows[0];
 
-        // ✅ THAY ĐỔI: Xử lý diagnosis theo vai trò
+        // Xử lý diagnosis theo vai trò
         const {
           canViewFullDiagnosis,
           canViewDiagnosisSummary,
@@ -239,7 +257,6 @@ const getById = withAuth(
 // GET Medical Records by Patient ID
 const getByPatient = withAuth(
   requireAnyRole(["doctor", "nurse"])(
-    // ✅ BỎ 'admin'
     withAuditLog(
       "READ",
       "medical_records"
@@ -287,7 +304,7 @@ const getByPatient = withAuth(
 
         const result = await db.query(query, [patientId, limit, offset]);
 
-        // ✅ THAY ĐỔI: Xử lý diagnosis cho từng record
+        // Xử lý diagnosis cho từng record
         const {
           canViewFullDiagnosis,
           canViewDiagnosisSummary,
@@ -340,24 +357,6 @@ const getByPatient = withAuth(
     })
   )
 );
-
-const createDiagnosisSummary = (fullDiagnosis) => {
-  if (!fullDiagnosis) return null;
-
-  // Lấy 100 ký tự đầu hoặc câu đầu tiên
-  const maxLength = 100;
-  if (fullDiagnosis.length <= maxLength) {
-    return fullDiagnosis;
-  }
-
-  // Tìm dấu chấm, phẩy hoặc xuống dòng đầu tiên
-  const firstSentenceEnd = fullDiagnosis.search(/[.。,，\n]/);
-  if (firstSentenceEnd > 0 && firstSentenceEnd <= maxLength) {
-    return fullDiagnosis.substring(0, firstSentenceEnd + 1) + " (...)";
-  }
-
-  return fullDiagnosis.substring(0, maxLength) + "...";
-};
 
 // UPDATE Medical Record (Doctor only)
 const update = withAuth(
@@ -446,6 +445,5 @@ module.exports = {
   create,
   getById,
   getByPatient,
-  createDiagnosisSummary,
   update,
 };
