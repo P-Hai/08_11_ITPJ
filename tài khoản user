@@ -1,0 +1,9 @@
+Username      Password            Role
+===========================================
+admin001      Admin123!@#         admin
+doc001        Doctor123!@#        doctor
+doc002        Doctor123!@#        doctor
+nurse001      Nurse123!@#         nurse
+nur002        Nurse123!@#         nurse
+rec001        Rec001@2025!        receptionist
+patient12345  Patient123!@#       patient
