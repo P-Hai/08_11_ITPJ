@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "./aws-config";
+import ChangePasswordForm from "./components/ChangePasswordForm";
 
 function Login() {
   const [username, setUsername] = useState("");
@@ -9,6 +10,10 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // ✅ THÊM: State cho change password flow
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [changePasswordSession, setChangePasswordSession] = useState(null);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -23,15 +28,27 @@ function Login() {
       });
 
       if (response.data.success) {
+        const data = response.data.data;
+
+        // ✅ CHECK: Nếu cần đổi mật khẩu
+        if (data.challengeName === "NEW_PASSWORD_REQUIRED") {
+          setChangePasswordSession(data.session);
+          setShowChangePassword(true);
+          setSuccess("Please set a new password");
+          setLoading(false);
+          return;
+        }
+
+        // ✅ Login thành công bình thường
         setSuccess("Login successful!");
-        console.log("User data:", response.data.data);
+        console.log("User data:", data);
 
         // Lưu token vào localStorage
-        localStorage.setItem("idToken", response.data.data.idToken);
-        localStorage.setItem("accessToken", response.data.data.accessToken);
-        localStorage.setItem("user", JSON.stringify(response.data.data.user));
+        localStorage.setItem("idToken", data.idToken);
+        localStorage.setItem("accessToken", data.accessToken);
+        localStorage.setItem("user", JSON.stringify(data.user));
 
-        const userRole = response.data.data.user.role;
+        const userRole = data.user.role;
         setTimeout(() => {
           switch (userRole) {
             case "doctor":
@@ -51,7 +68,7 @@ function Login() {
               break;
             default:
               alert(
-                `Welcome ${response.data.data.user.name}! No dashboard for role: ${userRole}`
+                `Welcome ${data.user.name}! No dashboard for role: ${userRole}`
               );
           }
         }, 1000);
@@ -68,6 +85,47 @@ function Login() {
     }
   };
 
+  // ✅ THÊM: Handler khi đổi password xong
+  const handlePasswordChangeSuccess = (user) => {
+    setSuccess("Password changed successfully! Redirecting...");
+
+    setTimeout(() => {
+      switch (user.role) {
+        case "doctor":
+          window.location.href = "/doctor";
+          break;
+        case "receptionist":
+          window.location.href = "/receptionist";
+          break;
+        case "admin":
+          window.location.href = "/admin";
+          break;
+        case "patient":
+          window.location.href = "/patient";
+          break;
+        case "nurse":
+          window.location.href = "/nurse";
+          break;
+        default:
+          alert(`Welcome ${user.name}! No dashboard for role: ${user.role}`);
+      }
+    }, 1500);
+  };
+
+  // ✅ RENDER: Change Password Form
+  if (showChangePassword) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-100 flex items-center justify-center p-4">
+        <ChangePasswordForm
+          username={username}
+          session={changePasswordSession}
+          onSuccess={handlePasswordChangeSuccess}
+        />
+      </div>
+    );
+  }
+
+  // ✅ RENDER: Login Form (giữ nguyên)
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">

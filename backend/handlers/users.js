@@ -93,7 +93,7 @@ const createUser = withAuth(
           body.role === "doctor"
             ? "Doctors"
             : body.role === "nurse"
-            ? "Nurses"
+            ? "nurse"
             : "Receptionists";
 
         await cognito
