@@ -227,6 +227,24 @@
         "LogGroupName": "/aws/lambda/ehr-backend-api-dev-getAuditLogs"
       }
     },
+    "InitMFALogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/ehr-backend-api-dev-initMFA"
+      }
+    },
+    "VerifyMFALogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/ehr-backend-api-dev-verifyMFA"
+      }
+    },
+    "GetMFAStatusLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/ehr-backend-api-dev-getMFAStatus"
+      }
+    },
     "IamRoleLambdaExecution": {
       "Type": "AWS::IAM::Role",
       "Properties": {
@@ -288,6 +306,14 @@
                 {
                   "Effect": "Allow",
                   "Action": [
+                    "ses:SendEmail",
+                    "ses:SendRawEmail"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
                     "cognito-idp:AdminGetUser",
                     "cognito-idp:ListUsers",
                     "cognito-idp:AdminCreateUser",
@@ -295,7 +321,8 @@
                     "cognito-idp:AdminDisableUser",
                     "cognito-idp:AdminSetUserPassword",
                     "cognito-idp:AdminInitiateAuth",
-                    "cognito-idp:AdminRespondToAuthChallenge"
+                    "cognito-idp:AdminRespondToAuthChallenge",
+                    "cognito-idp:AdminListGroupsForUser"
                   ],
                   "Resource": "arn:aws:cognito-idp:ap-southeast-1:*:userpool/ap-southeast-1_KAphl41fW"
                 },
@@ -342,7 +369,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/auth.login",
         "Runtime": "nodejs20.x",
@@ -381,7 +408,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/auth.changePassword",
         "Runtime": "nodejs20.x",
@@ -420,7 +447,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/auth.refreshToken",
         "Runtime": "nodejs20.x",
@@ -459,7 +486,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/users.createUser",
         "Runtime": "nodejs20.x",
@@ -498,7 +525,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/users.listUsers",
         "Runtime": "nodejs20.x",
@@ -537,7 +564,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/users.disableUser",
         "Runtime": "nodejs20.x",
@@ -576,7 +603,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/users.resetPassword",
         "Runtime": "nodejs20.x",
@@ -615,7 +642,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/patientPortal.getMyProfile",
         "Runtime": "nodejs20.x",
@@ -654,7 +681,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/patientPortal.getMyMedicalRecords",
         "Runtime": "nodejs20.x",
@@ -693,7 +720,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/patientPortal.getMyPrescriptions",
         "Runtime": "nodejs20.x",
@@ -732,7 +759,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/patientPortal.getMyVitalSigns",
         "Runtime": "nodejs20.x",
@@ -771,7 +798,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/patients.create",
         "Runtime": "nodejs20.x",
@@ -810,7 +837,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/patients.getById",
         "Runtime": "nodejs20.x",
@@ -849,7 +876,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/patients.search",
         "Runtime": "nodejs20.x",
@@ -888,7 +915,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/patients.update",
         "Runtime": "nodejs20.x",
@@ -927,7 +954,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/vitalSigns.create",
         "Runtime": "nodejs20.x",
@@ -966,7 +993,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/vitalSigns.getByPatient",
         "Runtime": "nodejs20.x",
@@ -1005,7 +1032,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/vitalSigns.getLatest",
         "Runtime": "nodejs20.x",
@@ -1044,7 +1071,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/medicalRecords.create",
         "Runtime": "nodejs20.x",
@@ -1083,7 +1110,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/medicalRecords.getById",
         "Runtime": "nodejs20.x",
@@ -1122,7 +1149,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/medicalRecords.getByPatient",
         "Runtime": "nodejs20.x",
@@ -1161,7 +1188,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/medicalRecords.update",
         "Runtime": "nodejs20.x",
@@ -1200,7 +1227,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/prescriptions.create",
         "Runtime": "nodejs20.x",
@@ -1239,7 +1266,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/prescriptions.getById",
         "Runtime": "nodejs20.x",
@@ -1278,7 +1305,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/prescriptions.getByPatient",
         "Runtime": "nodejs20.x",
@@ -1317,7 +1344,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ehr-backend-api/dev/1765555375674-2025-12-12T16:02:55.674Z/ehr-backend-api.zip"
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
         },
         "Handler": "handlers/auditLogs.getLogs",
         "Runtime": "nodejs20.x",
@@ -1349,264 +1376,411 @@
         "GetAuditLogsLogGroup"
       ]
     },
-    "LoginLambdaVersionxEkSQ2lOxAcWBZBCDKbGjtil5uqUnYu1gbmLxM": {
+    "InitMFALambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
+        },
+        "Handler": "handlers/mfa.initMFA",
+        "Runtime": "nodejs20.x",
+        "FunctionName": "ehr-backend-api-dev-initMFA",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Environment": {
+          "Variables": {
+            "USER_POOL_ID": "ap-southeast-1_KAphl41fW",
+            "CLIENT_ID": "56ikumm3gld5ln6utag70vf781",
+            "REGION": "ap-southeast-1",
+            "DB_HOST": "ehr-system-db.c1keewkss49f.ap-southeast-1.rds.amazonaws.com",
+            "DB_PORT": "5432",
+            "DB_NAME": "ehr_production",
+            "DB_USER": "postgres",
+            "DB_PASSWORD": "EhrAdmin2025!",
+            "NODE_ENV": "development",
+            "DB_SSL": "true"
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "InitMFALogGroup"
+      ]
+    },
+    "VerifyMFALambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
+        },
+        "Handler": "handlers/mfa.verifyMFA",
+        "Runtime": "nodejs20.x",
+        "FunctionName": "ehr-backend-api-dev-verifyMFA",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Environment": {
+          "Variables": {
+            "USER_POOL_ID": "ap-southeast-1_KAphl41fW",
+            "CLIENT_ID": "56ikumm3gld5ln6utag70vf781",
+            "REGION": "ap-southeast-1",
+            "DB_HOST": "ehr-system-db.c1keewkss49f.ap-southeast-1.rds.amazonaws.com",
+            "DB_PORT": "5432",
+            "DB_NAME": "ehr_production",
+            "DB_USER": "postgres",
+            "DB_PASSWORD": "EhrAdmin2025!",
+            "NODE_ENV": "development",
+            "DB_SSL": "true"
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "VerifyMFALogGroup"
+      ]
+    },
+    "GetMFAStatusLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/ehr-backend-api/dev/1766325740946-2025-12-21T14:02:20.946Z/ehr-backend-api.zip"
+        },
+        "Handler": "handlers/mfa.getMFAStatus",
+        "Runtime": "nodejs20.x",
+        "FunctionName": "ehr-backend-api-dev-getMFAStatus",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Environment": {
+          "Variables": {
+            "USER_POOL_ID": "ap-southeast-1_KAphl41fW",
+            "CLIENT_ID": "56ikumm3gld5ln6utag70vf781",
+            "REGION": "ap-southeast-1",
+            "DB_HOST": "ehr-system-db.c1keewkss49f.ap-southeast-1.rds.amazonaws.com",
+            "DB_PORT": "5432",
+            "DB_NAME": "ehr_production",
+            "DB_USER": "postgres",
+            "DB_PASSWORD": "EhrAdmin2025!",
+            "NODE_ENV": "development",
+            "DB_SSL": "true"
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "GetMFAStatusLogGroup"
+      ]
+    },
+    "LoginLambdaVersion7LBR2WU9sBLkrzYH9FKtLgpowd2Sbmub1uWQ8IiExAI": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "LoginLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "ChangePasswordLambdaVersion70W8XrixKne7x5W0DOHZIxLNzM3YTwXnTzrRdj7qoM": {
+    "ChangePasswordLambdaVersionJxGbole9IomHhTI2oNkQSDDNJWonluqFTPvTYB4wAw4": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ChangePasswordLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "RefreshTokenLambdaVersionZdMX5prQ2014nSXP1L8yNmbcpSMJTOztfi7ysKc": {
+    "RefreshTokenLambdaVersion5tgHAfqDnPGaJG8FSmgTQ9OyhQMCjLQC7S53JSrlKg": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "RefreshTokenLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "CreateUserLambdaVersionSCpZv5O2cbJqidqu5fzTCRD2185NP9Dk2iWKI6noQ": {
+    "CreateUserLambdaVersionnp3o2AnImj7mT6y4UUBBtl4BXufbKpGPXiFnhblteU": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "CreateUserLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "ListUsersLambdaVersionHzNq1q9XLkZRnE4q39HkNjAnnE4tKe6rg2rfmvgLCg": {
+    "ListUsersLambdaVersionL3alZ9Q01jb3btDiQr6tqQ35rXOcdsE0WU1axaKQS2Y": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ListUsersLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "DisableUserLambdaVersionGnoxeUfP9qn8zTUgpvtesp949Tyxq4T1RlJCtc1afbo": {
+    "DisableUserLambdaVersionAUEojjdQVwkf0NshNaw7hcR4KLm34SKSfIfoo0G4G8": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "DisableUserLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "ResetUserPasswordLambdaVersionf37Vih8Yd2qGHAl01R9d0tOwaTNvsmDNbsOsum6e9bE": {
+    "ResetUserPasswordLambdaVersionojkYx1olv2hrwwK5L7UUpgEYKo6B8iLwsYP78prQ": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ResetUserPasswordLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "GetMyProfileLambdaVersionmVTqQERgKTphTKYHZq2NHFh7JOgyb0FEWmTmSUKuw": {
+    "GetMyProfileLambdaVersion2HCR7IM02bBLML2xrWjllylayk6ciUzUh29nOvmSBk": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetMyProfileLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "GetMyMedicalRecordsLambdaVersionBrXqxPFRKIiv2MP3kajZE5hvRPuWCfs1uTFCuMej8": {
+    "GetMyMedicalRecordsLambdaVersionfonavwkR53NCifT0ePFISSl1p4JdiWDt2dr4n9dmk": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetMyMedicalRecordsLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "GetMyPrescriptionsLambdaVersionuG6Sf3u54ViBx3RNqcruFB4bOYjux8G4jmYpCSHhl4": {
+    "GetMyPrescriptionsLambdaVersion4rdLUNTJ87uCTJwiZseDq0RmsH8FKtQOqs66kSeZY": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetMyPrescriptionsLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "GetMyVitalSignsLambdaVersionX3hasIlqJWurrj82roQj24V32HE4iptAbVmdmtJ3PY": {
+    "GetMyVitalSignsLambdaVersioninmeivPdlH4R821xUeABncIW9zuzJzsx78q7OPJeQ": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetMyVitalSignsLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "CreatePatientLambdaVersionW0ojCaLfMbt4TDI6te6c4M2CCBm4LjV7c6YMIYodoM": {
+    "CreatePatientLambdaVersionIzx9Kh3WmFzjDVlSjl0xvrpFsMNpzv6FIdqKGZhsIoo": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "CreatePatientLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "GetPatientLambdaVersionT2eilMx8KgM89hCOojE07W3UX2DIcHuIjarpnARZvo": {
+    "GetPatientLambdaVersiony1RUAMQUysnqkhKXyaFNPpcG3kJzctBwSph3hu69k": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetPatientLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "SearchPatientsLambdaVersion4HdKzt5evaaNt6gw5HRd988vqk0lRpTDQugu63DkY8": {
+    "SearchPatientsLambdaVersionIX8BAu3SyYq2m4UnLnIoTPs9piz3JqmYc65WkHGweJs": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "SearchPatientsLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "UpdatePatientLambdaVersion83d6BSWXan0tLfxLxaADfx4vwhPOly25cSS5NYjQ": {
+    "UpdatePatientLambdaVersionc94Yhe5RPQ9gVORqVdgLuOFlRQWWcjO0GCDtLQAIU": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "UpdatePatientLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "CreateVitalSignsLambdaVersionpC8nX9p38n2EKHgpMEOBjG9J8ioQ97u1tLrIHLHrn4": {
+    "CreateVitalSignsLambdaVersionMKokUp8GpQ1gMIJfl9sz2LE91QZ19CJFpGme4Qc": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "CreateVitalSignsLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "GetVitalSignsLambdaVersionW07IvlaFbtDmHDypg26H04zHNJby8L14qfifZDH888": {
+    "GetVitalSignsLambdaVersion3Lr3gPCOiUnK3q1g6YZ7Jy1fy5wrWqjDCC2urJkDdvw": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetVitalSignsLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "GetLatestVitalSignsLambdaVersionMnUOgLOrf5fYjk60mwmmwJuWs0LqNeZmgdATQTXB8y8": {
+    "GetLatestVitalSignsLambdaVersionYhwJ844FjLS0pHrZnZoCP8fecvAg3cygBosroggU8M": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetLatestVitalSignsLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "CreateMedicalRecordLambdaVersionC33ZT2tQ9sxkt2zELzBY4ef2IjNVJdSNHYuOeiwDiI": {
+    "CreateMedicalRecordLambdaVersioncRzj0tEC8LsG8UL43S0fOMueOGrQbiOxUp5IbAFTs": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "CreateMedicalRecordLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "GetMedicalRecordLambdaVersiona8yjQYkFnAexMk4cNJVGxXXPbVPzk1ZV8KgmwNi8": {
+    "GetMedicalRecordLambdaVersionjxs6Lk4VQzrzK9XitKo2XEQtLxB0LFVasiPygiWzVM": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetMedicalRecordLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "GetMedicalRecordsByPatientLambdaVersionYgmmoc6JWYimKQk8xhTy6DVRcXRLHXQrkT3BPaFLA": {
+    "GetMedicalRecordsByPatientLambdaVersiongpr8FfCOeeq0OaJBOk4FjxVLdImFcMfkwxmiYCzClU": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetMedicalRecordsByPatientLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "UpdateMedicalRecordLambdaVersions7Qt8Q9giVNfEkK2wYaPQpxwycRCGqkTH8Kgr6CDg": {
+    "UpdateMedicalRecordLambdaVersionlHJp6czOEJXdJGgFfJJ8zZME2gMa8HBo8z7HVjtvaM": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "UpdateMedicalRecordLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "CreatePrescriptionLambdaVersionf3CvCsUBZvWnNW3PDuhSvdiR0ePxFzPUvuIiDyo": {
+    "CreatePrescriptionLambdaVersionhUIqmaqJLhYS088LIMHX3bAV56G2uaUD3mWQZzMjwM": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "CreatePrescriptionLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "GetPrescriptionLambdaVersioni1H6IbnyAVW3DNrob6U10AZnMD7Npf9h3A0FLGTNo": {
+    "GetPrescriptionLambdaVersionr9sSN03gDNfGaKefaUIpRKTFvEi7cNUiInakQYL2dc": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetPrescriptionLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "GetPrescriptionsByPatientLambdaVersionusuqrV3xH55xUEJEiTxPa3MC8xHfcH03s3hl3qxJyaE": {
+    "GetPrescriptionsByPatientLambdaVersionNW2RiNEjAFVXZwX0CPoRkc6IU81zpOSdyEXWulR2CbM": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetPrescriptionsByPatientLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
-    "GetAuditLogsLambdaVersionJUlfa81l0N9u4yMhlbbPSixbTDUZ9MVmjzesUZyBqk": {
+    "GetAuditLogsLambdaVersion5dYEG6Y68seFwC5zeqbVgZYmxEJcWQXjgmM3KBH4u0": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetAuditLogsLambdaFunction"
         },
-        "CodeSha256": "uM+lpdcl3II0k7rTueWkBC/cq7blZdJNhgd+YYojWkA="
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
+      }
+    },
+    "InitMFALambdaVersion9bwLGPhF9P5QAsABrhvtaMau3nu8yM1TWov1CyTfgA": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "InitMFALambdaFunction"
+        },
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
+      }
+    },
+    "VerifyMFALambdaVersionrmhF4CnPrPHJ1uivOMhYOPl8NRXHdyj1najf0csI": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "VerifyMFALambdaFunction"
+        },
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
+      }
+    },
+    "GetMFAStatusLambdaVersion4LoPt1rfNI09pNdnyS6LKU9rNyiM2aabgP7jYsLCY": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "GetMFAStatusLambdaFunction"
+        },
+        "CodeSha256": "j8XGUcR2ziPD3feFvKC7SdPFWq1WRCzXoAzjNrkc7lE="
       }
     },
     "HttpApi": {
@@ -3594,6 +3768,231 @@
         }
       },
       "DependsOn": "HttpApiIntegrationGetAuditLogs"
+    },
+    "InitMFALambdaPermissionHttpApi": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "InitMFALambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "HttpApi"
+              },
+              "/*"
+            ]
+          ]
+        }
+      }
+    },
+    "HttpApiIntegrationInitMFA": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "InitMFALambdaFunction",
+            "Arn"
+          ]
+        },
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 30000
+      }
+    },
+    "HttpApiRoutePostMfaInit": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "RouteKey": "POST /mfa/init",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "HttpApiIntegrationInitMFA"
+              }
+            ]
+          ]
+        }
+      },
+      "DependsOn": "HttpApiIntegrationInitMFA"
+    },
+    "VerifyMFALambdaPermissionHttpApi": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "VerifyMFALambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "HttpApi"
+              },
+              "/*"
+            ]
+          ]
+        }
+      }
+    },
+    "HttpApiIntegrationVerifyMFA": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "VerifyMFALambdaFunction",
+            "Arn"
+          ]
+        },
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 30000
+      }
+    },
+    "HttpApiRoutePostMfaVerify": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "RouteKey": "POST /mfa/verify",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "HttpApiIntegrationVerifyMFA"
+              }
+            ]
+          ]
+        }
+      },
+      "DependsOn": "HttpApiIntegrationVerifyMFA"
+    },
+    "GetMFAStatusLambdaPermissionHttpApi": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "GetMFAStatusLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "HttpApi"
+              },
+              "/*"
+            ]
+          ]
+        }
+      }
+    },
+    "HttpApiIntegrationGetMFAStatus": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "GetMFAStatusLambdaFunction",
+            "Arn"
+          ]
+        },
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 30000
+      }
+    },
+    "HttpApiRouteGetMfaStatusUseridVar": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "RouteKey": "GET /mfa/status/{userId}",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "HttpApiIntegrationGetMFAStatus"
+              }
+            ]
+          ]
+        }
+      },
+      "DependsOn": "HttpApiIntegrationGetMFAStatus"
     }
   },
   "Outputs": {
@@ -3608,7 +4007,7 @@
     "LoginLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "LoginLambdaVersionxEkSQ2lOxAcWBZBCDKbGjtil5uqUnYu1gbmLxM"
+        "Ref": "LoginLambdaVersion7LBR2WU9sBLkrzYH9FKtLgpowd2Sbmub1uWQ8IiExAI"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-LoginLambdaFunctionQualifiedArn"
@@ -3617,7 +4016,7 @@
     "ChangePasswordLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ChangePasswordLambdaVersion70W8XrixKne7x5W0DOHZIxLNzM3YTwXnTzrRdj7qoM"
+        "Ref": "ChangePasswordLambdaVersionJxGbole9IomHhTI2oNkQSDDNJWonluqFTPvTYB4wAw4"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-ChangePasswordLambdaFunctionQualifiedArn"
@@ -3626,7 +4025,7 @@
     "RefreshTokenLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "RefreshTokenLambdaVersionZdMX5prQ2014nSXP1L8yNmbcpSMJTOztfi7ysKc"
+        "Ref": "RefreshTokenLambdaVersion5tgHAfqDnPGaJG8FSmgTQ9OyhQMCjLQC7S53JSrlKg"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-RefreshTokenLambdaFunctionQualifiedArn"
@@ -3635,7 +4034,7 @@
     "CreateUserLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "CreateUserLambdaVersionSCpZv5O2cbJqidqu5fzTCRD2185NP9Dk2iWKI6noQ"
+        "Ref": "CreateUserLambdaVersionnp3o2AnImj7mT6y4UUBBtl4BXufbKpGPXiFnhblteU"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-CreateUserLambdaFunctionQualifiedArn"
@@ -3644,7 +4043,7 @@
     "ListUsersLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ListUsersLambdaVersionHzNq1q9XLkZRnE4q39HkNjAnnE4tKe6rg2rfmvgLCg"
+        "Ref": "ListUsersLambdaVersionL3alZ9Q01jb3btDiQr6tqQ35rXOcdsE0WU1axaKQS2Y"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-ListUsersLambdaFunctionQualifiedArn"
@@ -3653,7 +4052,7 @@
     "DisableUserLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "DisableUserLambdaVersionGnoxeUfP9qn8zTUgpvtesp949Tyxq4T1RlJCtc1afbo"
+        "Ref": "DisableUserLambdaVersionAUEojjdQVwkf0NshNaw7hcR4KLm34SKSfIfoo0G4G8"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-DisableUserLambdaFunctionQualifiedArn"
@@ -3662,7 +4061,7 @@
     "ResetUserPasswordLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ResetUserPasswordLambdaVersionf37Vih8Yd2qGHAl01R9d0tOwaTNvsmDNbsOsum6e9bE"
+        "Ref": "ResetUserPasswordLambdaVersionojkYx1olv2hrwwK5L7UUpgEYKo6B8iLwsYP78prQ"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-ResetUserPasswordLambdaFunctionQualifiedArn"
@@ -3671,7 +4070,7 @@
     "GetMyProfileLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetMyProfileLambdaVersionmVTqQERgKTphTKYHZq2NHFh7JOgyb0FEWmTmSUKuw"
+        "Ref": "GetMyProfileLambdaVersion2HCR7IM02bBLML2xrWjllylayk6ciUzUh29nOvmSBk"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-GetMyProfileLambdaFunctionQualifiedArn"
@@ -3680,7 +4079,7 @@
     "GetMyMedicalRecordsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetMyMedicalRecordsLambdaVersionBrXqxPFRKIiv2MP3kajZE5hvRPuWCfs1uTFCuMej8"
+        "Ref": "GetMyMedicalRecordsLambdaVersionfonavwkR53NCifT0ePFISSl1p4JdiWDt2dr4n9dmk"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-GetMyMedicalRecordsLambdaFunctionQualifiedArn"
@@ -3689,7 +4088,7 @@
     "GetMyPrescriptionsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetMyPrescriptionsLambdaVersionuG6Sf3u54ViBx3RNqcruFB4bOYjux8G4jmYpCSHhl4"
+        "Ref": "GetMyPrescriptionsLambdaVersion4rdLUNTJ87uCTJwiZseDq0RmsH8FKtQOqs66kSeZY"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-GetMyPrescriptionsLambdaFunctionQualifiedArn"
@@ -3698,7 +4097,7 @@
     "GetMyVitalSignsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetMyVitalSignsLambdaVersionX3hasIlqJWurrj82roQj24V32HE4iptAbVmdmtJ3PY"
+        "Ref": "GetMyVitalSignsLambdaVersioninmeivPdlH4R821xUeABncIW9zuzJzsx78q7OPJeQ"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-GetMyVitalSignsLambdaFunctionQualifiedArn"
@@ -3707,7 +4106,7 @@
     "CreatePatientLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "CreatePatientLambdaVersionW0ojCaLfMbt4TDI6te6c4M2CCBm4LjV7c6YMIYodoM"
+        "Ref": "CreatePatientLambdaVersionIzx9Kh3WmFzjDVlSjl0xvrpFsMNpzv6FIdqKGZhsIoo"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-CreatePatientLambdaFunctionQualifiedArn"
@@ -3716,7 +4115,7 @@
     "GetPatientLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetPatientLambdaVersionT2eilMx8KgM89hCOojE07W3UX2DIcHuIjarpnARZvo"
+        "Ref": "GetPatientLambdaVersiony1RUAMQUysnqkhKXyaFNPpcG3kJzctBwSph3hu69k"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-GetPatientLambdaFunctionQualifiedArn"
@@ -3725,7 +4124,7 @@
     "SearchPatientsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "SearchPatientsLambdaVersion4HdKzt5evaaNt6gw5HRd988vqk0lRpTDQugu63DkY8"
+        "Ref": "SearchPatientsLambdaVersionIX8BAu3SyYq2m4UnLnIoTPs9piz3JqmYc65WkHGweJs"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-SearchPatientsLambdaFunctionQualifiedArn"
@@ -3734,7 +4133,7 @@
     "UpdatePatientLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "UpdatePatientLambdaVersion83d6BSWXan0tLfxLxaADfx4vwhPOly25cSS5NYjQ"
+        "Ref": "UpdatePatientLambdaVersionc94Yhe5RPQ9gVORqVdgLuOFlRQWWcjO0GCDtLQAIU"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-UpdatePatientLambdaFunctionQualifiedArn"
@@ -3743,7 +4142,7 @@
     "CreateVitalSignsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "CreateVitalSignsLambdaVersionpC8nX9p38n2EKHgpMEOBjG9J8ioQ97u1tLrIHLHrn4"
+        "Ref": "CreateVitalSignsLambdaVersionMKokUp8GpQ1gMIJfl9sz2LE91QZ19CJFpGme4Qc"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-CreateVitalSignsLambdaFunctionQualifiedArn"
@@ -3752,7 +4151,7 @@
     "GetVitalSignsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetVitalSignsLambdaVersionW07IvlaFbtDmHDypg26H04zHNJby8L14qfifZDH888"
+        "Ref": "GetVitalSignsLambdaVersion3Lr3gPCOiUnK3q1g6YZ7Jy1fy5wrWqjDCC2urJkDdvw"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-GetVitalSignsLambdaFunctionQualifiedArn"
@@ -3761,7 +4160,7 @@
     "GetLatestVitalSignsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetLatestVitalSignsLambdaVersionMnUOgLOrf5fYjk60mwmmwJuWs0LqNeZmgdATQTXB8y8"
+        "Ref": "GetLatestVitalSignsLambdaVersionYhwJ844FjLS0pHrZnZoCP8fecvAg3cygBosroggU8M"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-GetLatestVitalSignsLambdaFunctionQualifiedArn"
@@ -3770,7 +4169,7 @@
     "CreateMedicalRecordLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "CreateMedicalRecordLambdaVersionC33ZT2tQ9sxkt2zELzBY4ef2IjNVJdSNHYuOeiwDiI"
+        "Ref": "CreateMedicalRecordLambdaVersioncRzj0tEC8LsG8UL43S0fOMueOGrQbiOxUp5IbAFTs"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-CreateMedicalRecordLambdaFunctionQualifiedArn"
@@ -3779,7 +4178,7 @@
     "GetMedicalRecordLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetMedicalRecordLambdaVersiona8yjQYkFnAexMk4cNJVGxXXPbVPzk1ZV8KgmwNi8"
+        "Ref": "GetMedicalRecordLambdaVersionjxs6Lk4VQzrzK9XitKo2XEQtLxB0LFVasiPygiWzVM"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-GetMedicalRecordLambdaFunctionQualifiedArn"
@@ -3788,7 +4187,7 @@
     "GetMedicalRecordsByPatientLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetMedicalRecordsByPatientLambdaVersionYgmmoc6JWYimKQk8xhTy6DVRcXRLHXQrkT3BPaFLA"
+        "Ref": "GetMedicalRecordsByPatientLambdaVersiongpr8FfCOeeq0OaJBOk4FjxVLdImFcMfkwxmiYCzClU"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-GetMedicalRecordsByPatientLambdaFunctionQualifiedArn"
@@ -3797,7 +4196,7 @@
     "UpdateMedicalRecordLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "UpdateMedicalRecordLambdaVersions7Qt8Q9giVNfEkK2wYaPQpxwycRCGqkTH8Kgr6CDg"
+        "Ref": "UpdateMedicalRecordLambdaVersionlHJp6czOEJXdJGgFfJJ8zZME2gMa8HBo8z7HVjtvaM"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-UpdateMedicalRecordLambdaFunctionQualifiedArn"
@@ -3806,7 +4205,7 @@
     "CreatePrescriptionLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "CreatePrescriptionLambdaVersionf3CvCsUBZvWnNW3PDuhSvdiR0ePxFzPUvuIiDyo"
+        "Ref": "CreatePrescriptionLambdaVersionhUIqmaqJLhYS088LIMHX3bAV56G2uaUD3mWQZzMjwM"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-CreatePrescriptionLambdaFunctionQualifiedArn"
@@ -3815,7 +4214,7 @@
     "GetPrescriptionLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetPrescriptionLambdaVersioni1H6IbnyAVW3DNrob6U10AZnMD7Npf9h3A0FLGTNo"
+        "Ref": "GetPrescriptionLambdaVersionr9sSN03gDNfGaKefaUIpRKTFvEi7cNUiInakQYL2dc"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-GetPrescriptionLambdaFunctionQualifiedArn"
@@ -3824,7 +4223,7 @@
     "GetPrescriptionsByPatientLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetPrescriptionsByPatientLambdaVersionusuqrV3xH55xUEJEiTxPa3MC8xHfcH03s3hl3qxJyaE"
+        "Ref": "GetPrescriptionsByPatientLambdaVersionNW2RiNEjAFVXZwX0CPoRkc6IU81zpOSdyEXWulR2CbM"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-GetPrescriptionsByPatientLambdaFunctionQualifiedArn"
@@ -3833,10 +4232,37 @@
     "GetAuditLogsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetAuditLogsLambdaVersionJUlfa81l0N9u4yMhlbbPSixbTDUZ9MVmjzesUZyBqk"
+        "Ref": "GetAuditLogsLambdaVersion5dYEG6Y68seFwC5zeqbVgZYmxEJcWQXjgmM3KBH4u0"
       },
       "Export": {
         "Name": "sls-ehr-backend-api-dev-GetAuditLogsLambdaFunctionQualifiedArn"
+      }
+    },
+    "InitMFALambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "InitMFALambdaVersion9bwLGPhF9P5QAsABrhvtaMau3nu8yM1TWov1CyTfgA"
+      },
+      "Export": {
+        "Name": "sls-ehr-backend-api-dev-InitMFALambdaFunctionQualifiedArn"
+      }
+    },
+    "VerifyMFALambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "VerifyMFALambdaVersionrmhF4CnPrPHJ1uivOMhYOPl8NRXHdyj1najf0csI"
+      },
+      "Export": {
+        "Name": "sls-ehr-backend-api-dev-VerifyMFALambdaFunctionQualifiedArn"
+      }
+    },
+    "GetMFAStatusLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "GetMFAStatusLambdaVersion4LoPt1rfNI09pNdnyS6LKU9rNyiM2aabgP7jYsLCY"
+      },
+      "Export": {
+        "Name": "sls-ehr-backend-api-dev-GetMFAStatusLambdaFunctionQualifiedArn"
       }
     },
     "HttpApiId": {

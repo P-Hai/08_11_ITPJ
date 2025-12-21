@@ -12,14 +12,6 @@ provider:
   memorySize: 512
   timeout: 30
 
-  # vpc:
-  #   securityGroupIds:
-  #     - sg-0f4696ad446117ed0
-  #   subnetIds:
-  #     - subnet-0882e47657d7fc7d1
-  #     - subnet-012a9f51911f66e1e
-  #     - subnet-09f7d6fa44a3aea44
-
   environment:
     USER_POOL_ID: ${env:USER_POOL_ID}
     CLIENT_ID: ${env:CLIENT_ID}
@@ -34,6 +26,14 @@ provider:
   iam:
     role:
       statements:
+        # SES Permissions
+        - Effect: Allow
+          Action:
+            - ses:SendEmail
+            - ses:SendRawEmail
+          Resource: "*"
+
+        # Cognito Permissions
         - Effect: Allow
           Action:
             - cognito-idp:AdminGetUser
@@ -44,13 +44,18 @@ provider:
             - cognito-idp:AdminSetUserPassword
             - cognito-idp:AdminInitiateAuth
             - cognito-idp:AdminRespondToAuthChallenge
+            - cognito-idp:AdminListGroupsForUser
           Resource:
             - arn:aws:cognito-idp:${self:provider.region}:*:userpool/${env:USER_POOL_ID}
+
+        # Secrets Manager
         - Effect: Allow
           Action:
             - secretsmanager:GetSecretValue
           Resource:
             - arn:aws:secretsmanager:${self:provider.region}:*:secret:ehr-system/*
+
+        # CloudWatch Logs
         - Effect: Allow
           Action:
             - logs:CreateLogGroup
@@ -265,6 +270,30 @@ functions:
     events:
       - httpApi:
           path: /audit-logs
+          method: get
+
+  # ============================================
+  # MFA FUNCTIONS
+  # ============================================
+  initMFA:
+    handler: handlers/mfa.initMFA
+    events:
+      - httpApi:
+          path: /mfa/init
+          method: post
+
+  verifyMFA:
+    handler: handlers/mfa.verifyMFA
+    events:
+      - httpApi:
+          path: /mfa/verify
+          method: post
+
+  getMFAStatus:
+    handler: handlers/mfa.getMFAStatus
+    events:
+      - httpApi:
+          path: /mfa/status/{userId}
           method: get
 
 package:

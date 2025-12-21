@@ -1,5 +1,6 @@
 // handlers/auth.js
 const AWS = require("aws-sdk");
+const db = require("../config/db");
 const { success, error, validationError } = require("../utils/response");
 const { logAction } = require("../utils/auditLog");
 
@@ -53,7 +54,7 @@ const login = async (event) => {
       // Successful login
       const tokens = authResult.AuthenticationResult;
 
-      // Get user details
+      // Get user details from Cognito
       const userDetails = await cognito
         .adminGetUser({
           UserPoolId: process.env.USER_POOL_ID,
@@ -67,11 +68,68 @@ const login = async (event) => {
         attributes[attr.Name] = attr.Value;
       });
 
+      // ✅ QUAN TRỌNG: Lấy user_id từ database
+      let dbUser = null;
+      try {
+        const dbUserQuery = await db.query(
+          `SELECT user_id, email, full_name, role, phone 
+           FROM users 
+           WHERE cognito_sub = $1`,
+          [attributes.sub]
+        );
+
+        if (dbUserQuery.rows.length > 0) {
+          dbUser = dbUserQuery.rows[0];
+          console.log("✅ Database user found:", dbUser.user_id);
+
+          // Update last login
+          await db.query(
+            "UPDATE users SET last_login = NOW() WHERE user_id = $1",
+            [dbUser.user_id]
+          );
+        } else {
+          console.warn(
+            "⚠️ User not found in database, cognito_sub:",
+            attributes.sub
+          );
+        }
+      } catch (dbError) {
+        console.error("❌ Database query error:", dbError);
+      }
+
+      // Get user role from Cognito groups
+      let userRole = attributes["custom:role"] || "patient";
+
+      // If role not in custom attribute, get from groups
+      if (!userRole || userRole === "patient") {
+        try {
+          const groupsData = await cognito
+            .adminListGroupsForUser({
+              UserPoolId: process.env.USER_POOL_ID,
+              Username: username,
+            })
+            .promise();
+
+          if (groupsData.Groups.length > 0) {
+            userRole = groupsData.Groups[0].GroupName.toLowerCase();
+            console.log("✅ User role from groups:", userRole);
+          }
+        } catch (groupError) {
+          console.warn("⚠️ Could not get user groups:", groupError.message);
+        }
+      }
+
+      // Use database role if available
+      if (dbUser && dbUser.role) {
+        userRole = dbUser.role;
+        console.log("✅ User role from database:", userRole);
+      }
+
       // Log successful login
       await logAction({
-        userId: attributes.sub,
+        userId: dbUser ? dbUser.user_id : attributes.sub,
         userEmail: attributes.email,
-        userRole: attributes["custom:role"],
+        userRole: userRole,
         action: "LOGIN",
         resourceType: "auth",
         resourceId: attributes.sub,
@@ -87,10 +145,20 @@ const login = async (event) => {
           refreshToken: tokens.RefreshToken,
           expiresIn: tokens.ExpiresIn,
           user: {
+            // ✅ Cognito info
+            sub: attributes.sub,
             username: username,
             email: attributes.email,
             name: attributes.name,
-            role: attributes["custom:role"],
+
+            // ✅ Database info (QUAN TRỌNG!)
+            userId: dbUser ? dbUser.user_id : null,
+            user_id: dbUser ? dbUser.user_id : null,
+            full_name: dbUser ? dbUser.full_name : attributes.name,
+            role: userRole,
+            phone: dbUser ? dbUser.phone : null,
+
+            // Cognito custom attributes (fallback)
             employeeId: attributes["custom:employee_id"],
             department: attributes["custom:department"],
           },
@@ -190,11 +258,29 @@ const changePassword = async (event) => {
         attributes[attr.Name] = attr.Value;
       });
 
+      // ✅ Get user from database
+      let dbUser = null;
+      try {
+        const dbUserQuery = await db.query(
+          "SELECT user_id, email, full_name, role FROM users WHERE cognito_sub = $1",
+          [attributes.sub]
+        );
+        dbUser = dbUserQuery.rows[0];
+      } catch (dbError) {
+        console.error("Database query error:", dbError);
+      }
+
+      // Get role
+      let userRole = attributes["custom:role"] || "patient";
+      if (dbUser && dbUser.role) {
+        userRole = dbUser.role;
+      }
+
       // Log password change
       await logAction({
-        userId: attributes.sub,
+        userId: dbUser ? dbUser.user_id : attributes.sub,
         userEmail: attributes.email,
-        userRole: attributes["custom:role"],
+        userRole: userRole,
         action: "CHANGE_PASSWORD",
         resourceType: "auth",
         resourceId: attributes.sub,
@@ -210,10 +296,14 @@ const changePassword = async (event) => {
           refreshToken: tokens.RefreshToken,
           expiresIn: tokens.ExpiresIn,
           user: {
+            sub: attributes.sub,
             username: username,
             email: attributes.email,
             name: attributes.name,
-            role: attributes["custom:role"],
+            userId: dbUser ? dbUser.user_id : null,
+            user_id: dbUser ? dbUser.user_id : null,
+            full_name: dbUser ? dbUser.full_name : attributes.name,
+            role: userRole,
             employeeId: attributes["custom:employee_id"],
           },
         },
