@@ -1,9 +1,13 @@
 // src/Login.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "./aws-config";
 import ChangePasswordForm from "./components/ChangePasswordForm";
 import MFAVerification from "./components/MFAVerification";
+import {
+  startAuthentication,
+  browserSupportsWebAuthn,
+} from "@simplewebauthn/browser";
 
 function Login() {
   const [username, setUsername] = useState("");
@@ -11,6 +15,10 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Biometric support
+  const [biometricSupported, setBiometricSupported] = useState(false);
+  const [showBiometricOption, setShowBiometricOption] = useState(false);
 
   // Change Password Flow
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -22,7 +30,18 @@ function Login() {
   const [mfaUserEmail, setMfaUserEmail] = useState(null);
   const [pendingUserData, setPendingUserData] = useState(null);
 
-  const handleLogin = async (e) => {
+  // Check biometric support on mount
+  useEffect(() => {
+    const checkBiometric = async () => {
+      const supported = await browserSupportsWebAuthn();
+      setBiometricSupported(supported);
+      console.log("🔐 WebAuthn supported:", supported);
+    };
+    checkBiometric();
+  }, []);
+
+  // ===== PASSWORD LOGIN =====
+  const handlePasswordLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -37,7 +56,7 @@ function Login() {
       if (response.data.success) {
         const data = response.data.data;
 
-        // CHECK 1: Nếu cần đổi mật khẩu
+        // CHECK 1: Password change required
         if (data.challengeName === "NEW_PASSWORD_REQUIRED") {
           setChangePasswordSession(data.session);
           setShowChangePassword(true);
@@ -46,28 +65,21 @@ function Login() {
           return;
         }
 
-        // CHECK 2: Kiểm tra xem role có cần MFA không
+        // CHECK 2: MFA required
         const mfaRequiredRoles = ["doctor", "nurse", "receptionist", "admin"];
         const userRole = data.user.role;
 
         if (mfaRequiredRoles.includes(userRole)) {
-          // Cần MFA
-          console.log("🔐 MFA required for role:", userRole);
-
-          // Lưu user data tạm thời
           setPendingUserData(data);
-
-          // Lưu userId và email để gửi OTP
-          setMfaUserId(data.user.userId); // user_id from database
-          setMfaUserEmail(data.user.email); // email để hiển thị
-
+          setMfaUserId(data.user.userId);
+          setMfaUserEmail(data.user.email);
           setShowMFA(true);
           setSuccess("Verification required");
           setLoading(false);
           return;
         }
 
-        // Không cần MFA - Login thành công luôn
+        // No MFA - Complete login
         completeLogin(data);
       }
     } catch (err) {
@@ -81,10 +93,98 @@ function Login() {
     }
   };
 
+  // ===== BIOMETRIC LOGIN =====
+  const handleBiometricLogin = async () => {
+    if (!username.trim()) {
+      setError("Please enter your username first");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      console.log("🔐 Starting biometric authentication for:", username);
+
+      // Step 1: Get authentication options from server
+      const optionsResponse = await axios.post(
+        `${API_BASE_URL}/webauthn/auth/start`,
+        { username }
+      );
+
+      if (!optionsResponse.data.success) {
+        throw new Error(optionsResponse.data.message);
+      }
+
+      const options = optionsResponse.data.data;
+      console.log("✅ Got authentication options:", options);
+
+      // Step 2: Prompt user for biometric
+      setSuccess("Please use your fingerprint or face...");
+
+      const authResponse = await startAuthentication(options);
+      console.log("✅ Got biometric response:", authResponse);
+
+      // Step 3: Verify with server
+      const verifyResponse = await axios.post(
+        `${API_BASE_URL}/webauthn/auth/finish`,
+        {
+          ...authResponse,
+          userId: options.userId,
+        }
+      );
+
+      if (!verifyResponse.data.success) {
+        throw new Error(verifyResponse.data.message);
+      }
+
+      const data = verifyResponse.data.data;
+      console.log("✅ Biometric verification successful:", data);
+
+      // ✅ WEBAUTHN LOGIN - NO MFA REQUIRED!
+      setSuccess("Biometric authentication successful! Logging in...");
+
+      // Store tokens if available
+      if (data.idToken) {
+        localStorage.setItem("idToken", data.idToken);
+        localStorage.setItem("accessToken", data.accessToken);
+        if (data.refreshToken) {
+          localStorage.setItem("refreshToken", data.refreshToken);
+        }
+      }
+
+      // Store user info
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // Redirect by role
+      setTimeout(() => {
+        redirectByRole(data.user.role);
+      }, 1000);
+    } catch (err) {
+      console.error("❌ Biometric login error:", err);
+
+      if (err.name === "NotAllowedError") {
+        setError("Biometric authentication cancelled");
+      } else if (err.message?.includes("No biometric credentials")) {
+        setError(
+          "No biometric credentials found. Please register your fingerprint first."
+        );
+      } else if (err.message?.includes("User not found")) {
+        setError("User not found. Please check your username.");
+      } else {
+        setError(
+          err.response?.data?.message ||
+            err.message ||
+            "Biometric authentication failed"
+        );
+      }
+      setLoading(false);
+    }
+  };
+
   const handleMFASuccess = () => {
     console.log("✅ MFA verified successfully");
-
-    // Complete login với user data đã lưu
     if (pendingUserData) {
       completeLogin(pendingUserData);
     }
@@ -94,42 +194,40 @@ function Login() {
     setSuccess("Login successful!");
     console.log("👤 User data:", data);
 
-    // Lưu token vào localStorage
     localStorage.setItem("idToken", data.idToken);
     localStorage.setItem("accessToken", data.accessToken);
     localStorage.setItem("user", JSON.stringify(data.user));
 
-    const userRole = data.user.role;
-
     setTimeout(() => {
-      switch (userRole) {
-        case "doctor":
-          window.location.href = "/doctor";
-          break;
-        case "receptionist":
-          window.location.href = "/receptionist";
-          break;
-        case "admin":
-          window.location.href = "/admin";
-          break;
-        case "patient":
-          window.location.href = "/patient";
-          break;
-        case "nurse":
-          window.location.href = "/nurse";
-          break;
-        default:
-          alert(
-            `Welcome ${data.user.name}! No dashboard for role: ${userRole}`
-          );
-      }
+      redirectByRole(data.user.role);
     }, 1500);
+  };
+
+  const redirectByRole = (role) => {
+    switch (role) {
+      case "doctor":
+        window.location.href = "/doctor";
+        break;
+      case "receptionist":
+        window.location.href = "/receptionist";
+        break;
+      case "admin":
+        window.location.href = "/admin";
+        break;
+      case "patient":
+        window.location.href = "/patient";
+        break;
+      case "nurse":
+        window.location.href = "/nurse";
+        break;
+      default:
+        alert(`Welcome! No dashboard for role: ${role}`);
+    }
   };
 
   const handlePasswordChangeSuccess = (user) => {
     setSuccess("Password changed successfully!");
 
-    // Sau khi đổi password, check MFA
     const mfaRequiredRoles = ["doctor", "nurse", "receptionist", "admin"];
 
     if (mfaRequiredRoles.includes(user.role)) {
@@ -141,27 +239,8 @@ function Login() {
       return;
     }
 
-    // Không cần MFA
     setTimeout(() => {
-      switch (user.role) {
-        case "doctor":
-          window.location.href = "/doctor";
-          break;
-        case "receptionist":
-          window.location.href = "/receptionist";
-          break;
-        case "admin":
-          window.location.href = "/admin";
-          break;
-        case "patient":
-          window.location.href = "/patient";
-          break;
-        case "nurse":
-          window.location.href = "/nurse";
-          break;
-        default:
-          alert(`Welcome! No dashboard for role: ${user.role}`);
-      }
+      redirectByRole(user.role);
     }, 1500);
   };
 
@@ -223,7 +302,7 @@ function Login() {
         </div>
 
         {/* Login Form */}
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handlePasswordLogin} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Username
@@ -238,19 +317,22 @@ function Login() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              placeholder="Enter your password"
-              required
-            />
-          </div>
+          {/* Show password field or biometric option */}
+          {!showBiometricOption ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="Enter your password"
+                required
+              />
+            </div>
+          ) : null}
 
           {/* Error Message */}
           {error && (
@@ -266,36 +348,83 @@ function Login() {
             </div>
           )}
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="none"
-                  ></circle>
+          {/* Submit Button - Password */}
+          {!showBiometricOption && (
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <svg
+                    className="animate-spin h-5 w-5 mr-3"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Logging in...
+                </span>
+              ) : (
+                "Login with Password"
+              )}
+            </button>
+          )}
+
+          {/* Biometric Login Button */}
+          {biometricSupported && (
+            <>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">OR</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleBiometricLogin}
+                disabled={loading || !username.trim()}
+                className="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+              >
+                <svg
+                  className="w-5 h-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"
+                  />
                 </svg>
-                Logging in...
-              </span>
-            ) : (
-              "Login"
-            )}
-          </button>
+                {loading ? "Authenticating..." : "Login with Biometric"}
+              </button>
+
+              {!username.trim() && (
+                <p className="text-xs text-gray-500 text-center">
+                  Enter your username first to use biometric login
+                </p>
+              )}
+            </>
+          )}
         </form>
 
         {/* Demo Accounts */}
@@ -316,6 +445,26 @@ function Login() {
             </div>
           </div>
         </div>
+
+        {/* Biometric Status */}
+        {biometricSupported && (
+          <div className="mt-4 text-center">
+            <p className="text-xs text-green-600 flex items-center justify-center">
+              <svg
+                className="w-4 h-4 mr-1"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Biometric authentication available on this device
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

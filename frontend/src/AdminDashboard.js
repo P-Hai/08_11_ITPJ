@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import UserManagement from "./components/UserManagement";
 import AuditLogs from "./components/AuditLogs";
+import BiometricSetup from "./components/BiometricSetup";
 
 function AdminDashboard() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -34,36 +35,22 @@ function AdminDashboard() {
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4">
           <nav className="flex space-x-8">
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "overview"
-                  ? "border-purple-500 text-purple-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Overview
-            </button>
-            <button
-              onClick={() => setActiveTab("users")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "users"
-                  ? "border-purple-500 text-purple-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              User Management
-            </button>
-            <button
-              onClick={() => setActiveTab("audit")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "audit"
-                  ? "border-purple-500 text-purple-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Audit Logs
-            </button>
+            {["overview", "users", "biometric", "audit"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === tab
+                    ? "border-purple-500 text-purple-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                {tab === "overview" && "Overview"}
+                {tab === "users" && "User Management"}
+                {tab === "biometric" && "🔐 Biometric Setup"}
+                {tab === "audit" && "Audit Logs"}
+              </button>
+            ))}
           </nav>
         </div>
       </div>
@@ -99,56 +86,24 @@ function AdminDashboard() {
                 <p className="text-xl font-bold text-green-600 mt-2">Healthy</p>
               </div>
             </div>
-
-            <div className="bg-white rounded-lg shadow p-6 mb-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">
-                Quick Actions
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button
-                  onClick={() => setActiveTab("users")}
-                  className="bg-purple-600 hover:bg-purple-700 text-white p-4 rounded-lg text-left"
-                >
-                  <div className="font-semibold mb-1">Manage Users</div>
-                  <div className="text-sm text-purple-100">
-                    Create, update, disable users
-                  </div>
-                </button>
-                <button
-                  onClick={() => setActiveTab("audit")}
-                  className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-lg text-left"
-                >
-                  <div className="font-semibold mb-1">View Audit Logs</div>
-                  <div className="text-sm text-blue-100">
-                    Security and access logs
-                  </div>
-                </button>
-                <button className="bg-gray-600 hover:bg-gray-700 text-white p-4 rounded-lg text-left">
-                  <div className="font-semibold mb-1">System Settings</div>
-                  <div className="text-sm text-gray-100">Configure system</div>
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">
-                Recent Admin Activity
-              </h2>
-              <div className="text-gray-500 text-center py-8">
-                <p>No recent admin activity</p>
-              </div>
-            </div>
           </>
         )}
 
-        {/* User Management Tab */}
+        {/* User Management */}
         {activeTab === "users" && (
           <div className="bg-white rounded-lg shadow p-6">
             <UserManagement />
           </div>
         )}
 
-        {/* Audit Logs Tab */}
+        {/* Biometric Setup */}
+        {activeTab === "biometric" && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <BiometricSetup />
+          </div>
+        )}
+
+        {/* Audit Logs */}
         {activeTab === "audit" && (
           <div className="bg-white rounded-lg shadow p-6">
             <AuditLogs />

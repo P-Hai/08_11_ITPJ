@@ -2,11 +2,13 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "../aws-config";
+import UpdatePatientForm from "./UpdatePatientForm"; // ← THÊM IMPORT
 
 function PatientDetailModal({ patientId, onClose }) {
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isEditing, setIsEditing] = useState(false); // ← THÊM STATE
 
   useEffect(() => {
     fetchPatientDetails();
@@ -35,12 +37,19 @@ function PatientDetailModal({ patientId, onClose }) {
     }
   };
 
+  const handleUpdateSuccess = () => {
+    setIsEditing(false);
+    fetchPatientDetails(); // Refresh data
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center rounded-t-lg">
-          <h2 className="text-xl font-bold">Patient Details</h2>
+        <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center rounded-t-lg sticky top-0">
+          <h2 className="text-xl font-bold">
+            {isEditing ? "Edit Patient" : "Patient Details"}
+          </h2>
           <button onClick={onClose} className="text-white hover:text-gray-200">
             <svg
               className="w-6 h-6"
@@ -70,197 +79,169 @@ function PatientDetailModal({ patientId, onClose }) {
               {error}
             </div>
           ) : patient ? (
-            <div className="space-y-6">
-              {/* Personal Information */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
-                  Personal Information
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
+            <>
+              {/* ✅ THÊM: Show Edit Form hoặc View Details */}
+              {isEditing ? (
+                <UpdatePatientForm
+                  patient={patient}
+                  onSuccess={handleUpdateSuccess}
+                  onCancel={() => setIsEditing(false)}
+                />
+              ) : (
+                <div className="space-y-6">
+                  {/* Personal Information */}
                   <div>
-                    <label className="text-sm text-gray-500">Patient ID</label>
-                    <p className="font-medium text-gray-900">
-                      {patient.patient_id}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-500">Full Name</label>
-                    <p className="font-medium text-gray-900">
-                      {patient.full_name}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-500">
-                      Date of Birth
-                    </label>
-                    <p className="font-medium text-gray-900">
-                      {patient.date_of_birth
-                        ? new Date(patient.date_of_birth).toLocaleDateString()
-                        : "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-500">Gender</label>
-                    <p className="font-medium text-gray-900">
-                      {patient.gender || "N/A"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Information */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
-                  Contact Information
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm text-gray-500">
-                      Phone Number
-                    </label>
-                    <p className="font-medium text-gray-900">
-                      {patient.phone_number || "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-500">Email</label>
-                    <p className="font-medium text-gray-900">
-                      {patient.email || "N/A"}
-                    </p>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-sm text-gray-500">Address</label>
-                    <p className="font-medium text-gray-900">
-                      {patient.address || "N/A"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Emergency Contact */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
-                  Emergency Contact
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm text-gray-500">
-                      Contact Name
-                    </label>
-                    <p className="font-medium text-gray-900">
-                      {patient.emergency_contact_name || "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-500">
-                      Contact Phone
-                    </label>
-                    <p className="font-medium text-gray-900">
-                      {patient.emergency_contact_phone || "N/A"}
-                    </p>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-sm text-gray-500">
-                      Relationship
-                    </label>
-                    <p className="font-medium text-gray-900">
-                      {patient.emergency_contact_relationship || "N/A"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Medical Information */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
-                  Medical Information
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm text-gray-500">Blood Type</label>
-                    <p className="font-medium text-gray-900">
-                      {patient.blood_type || "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-500">Allergies</label>
-                    <p className="font-medium text-gray-900">
-                      {patient.allergies || "None"}
-                    </p>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-sm text-gray-500">
-                      Medical History
-                    </label>
-                    <p className="font-medium text-gray-900">
-                      {patient.medical_history || "None"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Insurance Information */}
-              {patient.insurance_provider && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
-                    Insurance Information
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-gray-500">
-                        Insurance Provider
-                      </label>
-                      <p className="font-medium text-gray-900">
-                        {patient.insurance_provider || "N/A"}
-                      </p>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
+                      Personal Information
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm text-gray-500">
+                          Patient ID
+                        </label>
+                        <p className="font-medium text-gray-900">
+                          {patient.patient_id}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-sm text-gray-500">
+                          Full Name
+                        </label>
+                        <p className="font-medium text-gray-900">
+                          {patient.full_name}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-sm text-gray-500">
+                          Date of Birth
+                        </label>
+                        <p className="font-medium text-gray-900">
+                          {patient.date_of_birth
+                            ? new Date(
+                                patient.date_of_birth
+                              ).toLocaleDateString()
+                            : "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-sm text-gray-500">Gender</label>
+                        <p className="font-medium text-gray-900 capitalize">
+                          {patient.gender || "N/A"}
+                        </p>
+                      </div>
                     </div>
+                  </div>
+
+                  {/* Contact Information */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
+                      Contact Information
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm text-gray-500">
+                          Phone Number
+                        </label>
+                        <p className="font-medium text-gray-900">
+                          {patient.phone || "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-sm text-gray-500">Email</label>
+                        <p className="font-medium text-gray-900">
+                          {patient.email || "N/A"}
+                        </p>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-sm text-gray-500">Address</label>
+                        <p className="font-medium text-gray-900">
+                          {patient.address || "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-sm text-gray-500">City</label>
+                        <p className="font-medium text-gray-900">
+                          {patient.city || "N/A"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Insurance Information */}
+                  {(patient.national_id || patient.insurance_number) && (
                     <div>
-                      <label className="text-sm text-gray-500">
-                        Insurance Number
-                      </label>
-                      <p className="font-medium text-gray-900">
-                        {patient.insurance_number || "N/A"}
-                      </p>
+                      <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
+                        Insurance Information
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm text-gray-500">
+                            National ID
+                          </label>
+                          <p className="font-medium text-gray-900">
+                            {patient.national_id || "N/A"}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-sm text-gray-500">
+                            Insurance Number
+                          </label>
+                          <p className="font-medium text-gray-900">
+                            {patient.insurance_number || "N/A"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Timestamps */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
+                      Record Information
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm text-gray-500">
+                          Created At
+                        </label>
+                        <p className="font-medium text-gray-900">
+                          {patient.created_at
+                            ? new Date(patient.created_at).toLocaleString()
+                            : "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-sm text-gray-500">
+                          Last Updated
+                        </label>
+                        <p className="font-medium text-gray-900">
+                          {patient.updated_at
+                            ? new Date(patient.updated_at).toLocaleString()
+                            : "N/A"}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
-
-              {/* Timestamps */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
-                  Record Information
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm text-gray-500">Created At</label>
-                    <p className="font-medium text-gray-900">
-                      {patient.created_at
-                        ? new Date(patient.created_at).toLocaleString()
-                        : "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-500">
-                      Last Updated
-                    </label>
-                    <p className="font-medium text-gray-900">
-                      {patient.updated_at
-                        ? new Date(patient.updated_at).toLocaleString()
-                        : "N/A"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            </>
           ) : null}
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 flex justify-end rounded-b-lg">
+        <div className="bg-gray-50 px-6 py-4 flex justify-between rounded-b-lg sticky bottom-0">
+          {/* ✅ THÊM: Edit button cho Receptionist */}
+          {!isEditing && patient && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+            >
+              Edit Patient
+            </button>
+          )}
           <button
             onClick={onClose}
-            className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium"
+            className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium ml-auto"
           >
             Close
           </button>

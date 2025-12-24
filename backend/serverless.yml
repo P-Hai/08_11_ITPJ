@@ -21,6 +21,9 @@ provider:
     DB_NAME: ${env:DB_NAME}
     DB_USER: ${env:DB_USER}
     DB_PASSWORD: ${env:DB_PASSWORD}
+    JWT_SECRET: ${self:custom.JWT_SECRET}
+    WEBAUTHN_RP_ID: localhost
+    WEBAUTHN_ORIGIN: http://localhost:3000
     NODE_ENV: ${self:provider.stage}
 
   iam:
@@ -81,8 +84,59 @@ plugins:
   - serverless-offline
   - serverless-dotenv-plugin
 
+# ✅ CUSTOM SECTION - ADD JWT_SECRET
+custom:
+  JWT_SECRET: EHR_SYSTEM_WEBAUTHN_SECRET_KEY_2025_SECURE_TOKEN_CHANGE_IN_PRODUCTION
+
 functions:
-  # Authentication
+  # ============================================
+  # WEBAUTHN BIOMETRIC AUTHENTICATION
+  # ============================================
+  webauthnRegisterStart:
+    handler: handlers/webauthn.startRegistration
+    events:
+      - httpApi:
+          path: /webauthn/register/start
+          method: post
+
+  webauthnRegisterFinish:
+    handler: handlers/webauthn.finishRegistration
+    events:
+      - httpApi:
+          path: /webauthn/register/finish
+          method: post
+
+  webauthnAuthStart:
+    handler: handlers/webauthn.startAuthentication
+    events:
+      - httpApi:
+          path: /webauthn/auth/start
+          method: post
+
+  webauthnAuthFinish:
+    handler: handlers/webauthn.finishAuthentication
+    events:
+      - httpApi:
+          path: /webauthn/auth/finish
+          method: post
+
+  webauthnGetCredentials:
+    handler: handlers/webauthn.getCredentials
+    events:
+      - httpApi:
+          path: /webauthn/credentials
+          method: get
+
+  webauthnDeleteCredential:
+    handler: handlers/webauthn.deleteCredential
+    events:
+      - httpApi:
+          path: /webauthn/credentials/{id}
+          method: delete
+
+  # ============================================
+  # AUTHENTICATION
+  # ============================================
   login:
     handler: handlers/auth.login
     events:
@@ -104,7 +158,33 @@ functions:
           path: /auth/refresh
           method: post
 
-  # Admin User Management
+  # ============================================
+  # MFA FUNCTIONS
+  # ============================================
+  initMFA:
+    handler: handlers/mfa.initMFA
+    events:
+      - httpApi:
+          path: /mfa/init
+          method: post
+
+  verifyMFA:
+    handler: handlers/mfa.verifyMFA
+    events:
+      - httpApi:
+          path: /mfa/verify
+          method: post
+
+  getMFAStatus:
+    handler: handlers/mfa.getMFAStatus
+    events:
+      - httpApi:
+          path: /mfa/status/{userId}
+          method: get
+
+  # ============================================
+  # ADMIN USER MANAGEMENT
+  # ============================================
   createUser:
     handler: handlers/users.createUser
     events:
@@ -133,36 +213,9 @@ functions:
           path: /users/{id}/reset-password
           method: post
 
-  # Patient Portal
-  getMyProfile:
-    handler: handlers/patientPortal.getMyProfile
-    events:
-      - httpApi:
-          path: /patients/me
-          method: get
-
-  getMyMedicalRecords:
-    handler: handlers/patientPortal.getMyMedicalRecords
-    events:
-      - httpApi:
-          path: /medical-records/me
-          method: get
-
-  getMyPrescriptions:
-    handler: handlers/patientPortal.getMyPrescriptions
-    events:
-      - httpApi:
-          path: /prescriptions/me
-          method: get
-
-  getMyVitalSigns:
-    handler: handlers/patientPortal.getMyVitalSigns
-    events:
-      - httpApi:
-          path: /vital-signs/me
-          method: get
-
-  # Patients
+  # ============================================
+  # PATIENTS
+  # ============================================
   createPatient:
     handler: handlers/patients.create
     events:
@@ -191,7 +244,40 @@ functions:
           path: /patients/{id}
           method: put
 
-  # Vital Signs
+  # ============================================
+  # PATIENT PORTAL
+  # ============================================
+  getMyProfile:
+    handler: handlers/patientPortal.getMyProfile
+    events:
+      - httpApi:
+          path: /patients/me
+          method: get
+
+  getMyMedicalRecords:
+    handler: handlers/patientPortal.getMyMedicalRecords
+    events:
+      - httpApi:
+          path: /medical-records/me
+          method: get
+
+  getMyPrescriptions:
+    handler: handlers/patientPortal.getMyPrescriptions
+    events:
+      - httpApi:
+          path: /prescriptions/me
+          method: get
+
+  getMyVitalSigns:
+    handler: handlers/patientPortal.getMyVitalSigns
+    events:
+      - httpApi:
+          path: /vital-signs/me
+          method: get
+
+  # ============================================
+  # VITAL SIGNS
+  # ============================================
   createVitalSigns:
     handler: handlers/vitalSigns.create
     events:
@@ -213,7 +299,9 @@ functions:
           path: /vital-signs/patient/{patientId}/latest
           method: get
 
-  # Medical Records
+  # ============================================
+  # MEDICAL RECORDS
+  # ============================================
   createMedicalRecord:
     handler: handlers/medicalRecords.create
     events:
@@ -242,7 +330,9 @@ functions:
           path: /medical-records/{id}
           method: put
 
-  # Prescriptions
+  # ============================================
+  # PRESCRIPTIONS
+  # ============================================
   createPrescription:
     handler: handlers/prescriptions.create
     events:
@@ -264,36 +354,14 @@ functions:
           path: /prescriptions/patient/{patientId}
           method: get
 
-  # Audit Logs
+  # ============================================
+  # AUDIT LOGS
+  # ============================================
   getAuditLogs:
     handler: handlers/auditLogs.getLogs
     events:
       - httpApi:
           path: /audit-logs
-          method: get
-
-  # ============================================
-  # MFA FUNCTIONS
-  # ============================================
-  initMFA:
-    handler: handlers/mfa.initMFA
-    events:
-      - httpApi:
-          path: /mfa/init
-          method: post
-
-  verifyMFA:
-    handler: handlers/mfa.verifyMFA
-    events:
-      - httpApi:
-          path: /mfa/verify
-          method: post
-
-  getMFAStatus:
-    handler: handlers/mfa.getMFAStatus
-    events:
-      - httpApi:
-          path: /mfa/status/{userId}
           method: get
 
 package:
