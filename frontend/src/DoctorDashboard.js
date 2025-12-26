@@ -1,9 +1,9 @@
-// Updated DoctorDashboard.js (with corrected Prescriptions Tab)
 import React, { useState } from "react";
 import PatientsList from "./components/PatientsList";
 import CreateMedicalRecordForm from "./components/CreateMedicalRecordForm";
 import MedicalRecordsList from "./components/MedicalRecordsList";
 import CreatePrescriptionForm from "./components/CreatePrescriptionForm";
+import BiometricSetup from "./components/BiometricSetup"; // ⭐ NEW IMPORT
 
 function DoctorDashboard() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -41,136 +41,51 @@ function DoctorDashboard() {
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4">
           <nav className="flex space-x-8">
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "overview"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Overview
-            </button>
-            <button
-              onClick={() => setActiveTab("patients")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "patients"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Patients
-            </button>
-            <button
-              onClick={() => setActiveTab("records")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "records"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Medical Records
-            </button>
-            <button
-              onClick={() => setActiveTab("prescriptions")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "prescriptions"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Prescriptions
-            </button>
+            {[
+              ["overview", "Overview"],
+              ["patients", "Patients"],
+              ["records", "Medical Records"],
+              ["prescriptions", "Prescriptions"],
+              ["biometric", "🔐 Biometric Setup"], // ⭐ NEW TAB
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === key
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </nav>
         </div>
       </div>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Overview Tab */}
+        {/* Overview */}
         {activeTab === "overview" && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h3 className="text-gray-500 text-sm font-medium">
-                  Today's Patients
-                </h3>
-                <p className="text-3xl font-bold text-blue-600 mt-2">12</p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h3 className="text-gray-500 text-sm font-medium">
-                  Pending Records
-                </h3>
-                <p className="text-3xl font-bold text-orange-600 mt-2">5</p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h3 className="text-gray-500 text-sm font-medium">
-                  Prescriptions
-                </h3>
-                <p className="text-3xl font-bold text-green-600 mt-2">8</p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h3 className="text-gray-500 text-sm font-medium">
-                  This Month
-                </h3>
-                <p className="text-3xl font-bold text-purple-600 mt-2">127</p>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-white rounded-lg shadow p-6 mb-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">
-                Quick Actions
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button
-                  onClick={() => setActiveTab("patients")}
-                  className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-lg text-left"
-                >
-                  <div className="font-semibold mb-1">View Patients</div>
-                  <div className="text-sm text-blue-100">
-                    See all patients list
-                  </div>
-                </button>
-                <button
-                  onClick={() => setActiveTab("records")}
-                  className="bg-green-600 hover:bg-green-700 text-white p-4 rounded-lg text-left"
-                >
-                  <div className="font-semibold mb-1">
-                    Create Medical Record
-                  </div>
-                  <div className="text-sm text-green-100">
-                    Add new patient record
-                  </div>
-                </button>
-                <button
-                  onClick={() => setActiveTab("prescriptions")}
-                  className="bg-purple-600 hover:bg-purple-700 text-white p-4 rounded-lg text-left"
-                >
-                  <div className="font-semibold mb-1">Write Prescription</div>
-                  <div className="text-sm text-purple-100">
-                    Create new prescription
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">
-                Recent Activity
-              </h2>
-              <div className="text-gray-500 text-center py-8">
-                <p>No recent activity to display</p>
-                <p className="text-sm mt-2">
-                  Patient records and prescriptions will appear here
-                </p>
-              </div>
+              {[
+                ["Today's Patients", "12", "text-blue-600"],
+                ["Pending Records", "5", "text-orange-600"],
+                ["Prescriptions", "8", "text-green-600"],
+                ["This Month", "127", "text-purple-600"],
+              ].map(([title, value, color]) => (
+                <div key={title} className="bg-white p-6 rounded-lg shadow">
+                  <h3 className="text-gray-500 text-sm font-medium">{title}</h3>
+                  <p className={`text-3xl font-bold mt-2 ${color}`}>{value}</p>
+                </div>
+              ))}
             </div>
           </>
         )}
 
-        {/* Patients Tab */}
+        {/* Patients */}
         {activeTab === "patients" && (
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-bold text-gray-800 mb-6">
@@ -180,7 +95,7 @@ function DoctorDashboard() {
           </div>
         )}
 
-        {/* Medical Records Tab */}
+        {/* Medical Records */}
         {activeTab === "records" && (
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex justify-between items-center mb-6">
@@ -190,7 +105,7 @@ function DoctorDashboard() {
               {!showCreateRecord && (
                 <button
                   onClick={() => setShowCreateRecord(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium"
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg"
                 >
                   + Create New Record
                 </button>
@@ -212,7 +127,7 @@ function DoctorDashboard() {
           </div>
         )}
 
-        {/* Prescriptions Tab */}
+        {/* Prescriptions */}
         {activeTab === "prescriptions" && (
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex justify-between items-center mb-6">
@@ -220,7 +135,7 @@ function DoctorDashboard() {
               {!showCreatePrescription && (
                 <button
                   onClick={() => setShowCreatePrescription(true)}
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium"
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg"
                 >
                   + Create New Prescription
                 </button>
@@ -236,26 +151,20 @@ function DoctorDashboard() {
                 onCancel={() => setShowCreatePrescription(false)}
               />
             ) : (
-              <div className="text-center py-12 text-gray-500">
-                <svg
-                  className="w-16 h-16 mx-auto mb-4 text-gray-300"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-                  />
-                </svg>
-                <p className="text-lg mb-2">No prescriptions yet</p>
-                <p className="text-sm">
-                  Click \"Create New Prescription\" to write a prescription
-                </p>
-              </div>
+              <p className="text-center text-gray-500 py-12">
+                No prescriptions yet
+              </p>
             )}
+          </div>
+        )}
+
+        {/* ⭐ BIOMETRIC SETUP */}
+        {activeTab === "biometric" && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-6">
+              Biometric Authentication Setup
+            </h2>
+            <BiometricSetup />
           </div>
         )}
       </main>

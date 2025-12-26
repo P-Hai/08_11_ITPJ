@@ -8,6 +8,7 @@ import {
   startAuthentication,
   browserSupportsWebAuthn,
 } from "@simplewebauthn/browser";
+import loginBg from "./img/login.jpg"; // Import ảnh từ src/img
 
 function Login() {
   const [username, setUsername] = useState("");
@@ -247,18 +248,29 @@ function Login() {
   // RENDER: MFA Verification Screen
   if (showMFA) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-100 flex items-center justify-center p-4">
-        <MFAVerification
-          userId={mfaUserId}
-          userEmail={mfaUserEmail}
-          onSuccess={handleMFASuccess}
-          onCancel={() => {
-            setShowMFA(false);
-            setPendingUserData(null);
-            setMfaUserId(null);
-            setMfaUserEmail(null);
-          }}
-        />
+      <div
+        className="min-h-screen flex items-center justify-center p-4 relative"
+        style={{
+          backgroundImage: `url(${loginBg})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/60 via-purple-900/60 to-indigo-900/60 backdrop-blur-sm"></div>
+        <div className="relative z-10">
+          <MFAVerification
+            userId={mfaUserId}
+            userEmail={mfaUserEmail}
+            onSuccess={handleMFASuccess}
+            onCancel={() => {
+              setShowMFA(false);
+              setPendingUserData(null);
+              setMfaUserId(null);
+              setMfaUserEmail(null);
+            }}
+          />
+        </div>
       </div>
     );
   }
@@ -266,23 +278,46 @@ function Login() {
   // RENDER: Change Password Screen
   if (showChangePassword) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-100 flex items-center justify-center p-4">
-        <ChangePasswordForm
-          username={username}
-          session={changePasswordSession}
-          onSuccess={handlePasswordChangeSuccess}
-        />
+      <div
+        className="min-h-screen flex items-center justify-center p-4 relative"
+        style={{
+          backgroundImage: `url(${loginBg})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-900/60 to-red-900/60 backdrop-blur-sm"></div>
+        <div className="relative z-10">
+          <ChangePasswordForm
+            username={username}
+            session={changePasswordSession}
+            onSuccess={handlePasswordChangeSuccess}
+          />
+        </div>
       </div>
     );
   }
 
   // RENDER: Login Form
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+    <div
+      className="min-h-screen flex items-center justify-center p-4 relative"
+      style={{
+        backgroundImage: `url(${loginBg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      {/* Overlay tối */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/50 via-indigo-900/50 to-purple-900/50 backdrop-blur-sm"></div>
+
+      {/* Login Card */}
+      <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-8 w-full max-w-md relative z-10">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full mb-4 shadow-lg">
             <svg
               className="w-8 h-8 text-white"
               fill="none"
@@ -353,7 +388,7 @@ function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed shadow-lg"
             >
               {loading ? (
                 <span className="flex items-center justify-center">
@@ -400,7 +435,7 @@ function Login() {
                 type="button"
                 onClick={handleBiometricLogin}
                 disabled={loading || !username.trim()}
-                className="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+                className="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center shadow-lg"
               >
                 <svg
                   className="w-5 h-5 mr-2"

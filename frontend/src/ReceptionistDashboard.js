@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import PatientsList from "./components/PatientsList";
 import CreatePatientForm from "./components/CreatePatientForm";
+import BiometricSetup from "./components/BiometricSetup"; // ⭐ NEW IMPORT
 
 function ReceptionistDashboard() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -48,6 +49,7 @@ function ReceptionistDashboard() {
             >
               Overview
             </button>
+
             <button
               onClick={() => setActiveTab("patients")}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
@@ -57,6 +59,18 @@ function ReceptionistDashboard() {
               }`}
             >
               Patients
+            </button>
+
+            {/* ⭐ BIOMETRIC TAB */}
+            <button
+              onClick={() => setActiveTab("biometric")}
+              className={`px-6 py-3 font-medium rounded-t-lg ${
+                activeTab === "biometric"
+                  ? "bg-white text-purple-600 border-b-2 border-purple-600"
+                  : "text-gray-600 hover:text-purple-600"
+              }`}
+            >
+              🔐 Biometric Setup
             </button>
           </nav>
         </div>
@@ -154,6 +168,9 @@ function ReceptionistDashboard() {
             )}
           </div>
         )}
+
+        {/* ⭐ BIOMETRIC CONTENT */}
+        {activeTab === "biometric" && <BiometricSetup />}
       </main>
     </div>
   );

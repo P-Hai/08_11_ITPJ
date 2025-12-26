@@ -16,143 +16,213 @@ const cognito = new AWS.CognitoIdentityServiceProvider({
 });
 
 // POST /users - Create new user (Doctor, Nurse, Receptionist)
-const createUser = withAuth(
-  requireRole("admin")(
-    withAuditLog(
-      "CREATE",
-      "users"
-    )(async (event) => {
-      try {
-        const body = JSON.parse(event.body || "{}");
+/**
+ * POST /users
+ * Create new user (Admin only)
+ */
+const createUser = requireRole(["admin"])(
+  withAuditLog(
+    "CREATE",
+    "users"
+  )(async (event) => {
+    try {
+      const body = JSON.parse(event.body || "{}");
+      const { username, email, fullName, role } = body;
 
-        // Validation
-        const required = ["username", "email", "full_name", "role"];
-        const missing = required.filter((field) => !body[field]);
-
-        if (missing.length > 0) {
-          return validationError(
-            missing.reduce((acc, field) => {
-              acc[field] = `${field} is required`;
-              return acc;
-            }, {})
-          );
-        }
-
-        // Validate role
-        const allowedRoles = ["doctor", "nurse", "receptionist"];
-        if (!allowedRoles.includes(body.role)) {
-          return validationError({
-            role: `Role must be one of: ${allowedRoles.join(", ")}`,
-          });
-        }
-
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(body.email)) {
-          return validationError({ email: "Invalid email format" });
-        }
-
-        // Generate temporary password
-        const tempPassword = body.temporary_password || "TempPass@2025!";
-
-        // 1. Create user in Cognito
-        const cognitoParams = {
-          UserPoolId: process.env.USER_POOL_ID,
-          Username: body.username,
-          TemporaryPassword: tempPassword,
-          MessageAction: "SUPPRESS",
-          UserAttributes: [
-            { Name: "email", Value: body.email },
-            { Name: "email_verified", Value: "true" },
-            { Name: "name", Value: body.full_name },
-            { Name: "custom:role", Value: body.role },
-            { Name: "custom:employee_id", Value: body.username },
-            {
-              Name: "custom:department",
-              Value: body.department || body.role,
-            },
-          ],
-        };
-
-        if (body.phone) {
-          cognitoParams.UserAttributes.push({
-            Name: "phone_number",
-            Value: body.phone,
-          });
-        }
-
-        const cognitoResult = await cognito
-          .adminCreateUser(cognitoParams)
-          .promise();
-        const cognitoSub = cognitoResult.User.Attributes.find(
-          (attr) => attr.Name === "sub"
-        ).Value;
-
-        // 2. Add user to Cognito group
-        const groupName =
-          body.role === "doctor"
-            ? "Doctors"
-            : body.role === "nurse"
-            ? "nurse"
-            : "Receptionists";
-
-        await cognito
-          .adminAddUserToGroup({
-            UserPoolId: process.env.USER_POOL_ID,
-            Username: body.username,
-            GroupName: groupName,
-          })
-          .promise();
-
-        // 3. Insert into database
-        const dbQuery = `
-            INSERT INTO users (
-              cognito_sub,
-              email,
-              full_name,
-              role,
-              phone
-            ) VALUES ($1, $2, $3, $4, $5)
-            RETURNING user_id, email, full_name, role, created_at
-          `;
-
-        const dbResult = await db.query(dbQuery, [
-          cognitoSub,
-          body.email,
-          body.full_name,
-          body.role,
-          body.phone || null,
-        ]);
-
-        return success(
-          {
-            user: dbResult.rows[0],
-            temporary_password: tempPassword,
-            username: body.username,
-            note: "User must change password on first login",
-          },
-          "User created successfully",
-          201
-        );
-      } catch (err) {
-        console.error("Create user error:", err);
-
-        if (err.code === "UsernameExistsException") {
-          return error("Username already exists", 409);
-        }
-
-        if (err.code === "InvalidParameterException") {
-          return error("Invalid user parameters", 400, err.message);
-        }
-
-        if (err.code === "23505") {
-          return error("Email already exists in database", 409);
-        }
-
-        return error("Failed to create user", 500, err.message);
+      // Validation
+      if (!username || !email || !fullName || !role) {
+        return validationError({
+          username: !username ? "Username is required" : undefined,
+          email: !email ? "Email is required" : undefined,
+          fullName: !fullName ? "Full name is required" : undefined,
+          role: !role ? "Role is required" : undefined,
+        });
       }
-    })
-  )
+
+      const validRoles = [
+        "admin",
+        "doctor",
+        "nurse",
+        "receptionist",
+        "patient",
+      ];
+      if (!validRoles.includes(role)) {
+        return validationError({
+          role: `Role must be one of: ${validRoles.join(", ")}`,
+        });
+      }
+
+      // ✅ GENERATE RANDOM 6-CHARACTER PASSWORD
+      const generateRandomPassword = () => {
+        const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const lowercase = "abcdefghijklmnopqrstuvwxyz";
+        const numbers = "0123456789";
+        const special = "!@#$%";
+        const allChars = uppercase + lowercase + numbers + special;
+
+        let password = "";
+        // Ensure at least 1 of each type
+        password += uppercase[Math.floor(Math.random() * uppercase.length)];
+        password += lowercase[Math.floor(Math.random() * lowercase.length)];
+        password += numbers[Math.floor(Math.random() * numbers.length)];
+        password += special[Math.floor(Math.random() * special.length)];
+
+        // Fill remaining 2 characters
+        for (let i = 0; i < 2; i++) {
+          password += allChars[Math.floor(Math.random() * allChars.length)];
+        }
+
+        // Shuffle password
+        return password
+          .split("")
+          .sort(() => Math.random() - 0.5)
+          .join("");
+      };
+
+      const temporaryPassword = generateRandomPassword();
+
+      console.log("🔐 Generated password:", temporaryPassword); // For logging only
+
+      // Create user in Cognito
+      const createParams = {
+        UserPoolId: process.env.USER_POOL_ID,
+        Username: username,
+        UserAttributes: [
+          { Name: "email", Value: email },
+          { Name: "email_verified", Value: "true" },
+          { Name: "name", Value: fullName },
+        ],
+        TemporaryPassword: temporaryPassword,
+        MessageAction: "SUPPRESS", // Don't send email from Cognito
+      };
+
+      const cognitoResponse = await cognito
+        .adminCreateUser(createParams)
+        .promise();
+
+      const cognitoSub = cognitoResponse.User.Attributes.find(
+        (attr) => attr.Name === "sub"
+      ).Value;
+
+      // Add user to role group
+      await cognito
+        .adminAddUserToGroup({
+          UserPoolId: process.env.USER_POOL_ID,
+          Username: username,
+          GroupName: role,
+        })
+        .promise();
+
+      // Insert into database
+      const insertResult = await db.query(
+        `INSERT INTO users (user_id, cognito_sub, cognito_username, email, full_name, role, created_at)
+         VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5, NOW())
+         RETURNING user_id, cognito_username, email, full_name, role, created_at`,
+        [cognitoSub, username, email, fullName, role]
+      );
+
+      const newUser = insertResult.rows[0];
+
+      // ✅ SEND EMAIL WITH PASSWORD VIA SES
+      const ses = new AWS.SES({ region: process.env.REGION });
+
+      const emailParams = {
+        Source: "no-reply@ehr-system.com", // Must be verified in SES
+        Destination: {
+          ToAddresses: [email],
+        },
+        Message: {
+          Subject: {
+            Data: "Welcome to EHR System - Your Account Details",
+          },
+          Body: {
+            Html: {
+              Data: `
+                <html>
+                  <head>
+                    <style>
+                      body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                      .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                      .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+                      .credentials { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
+                      .password { font-size: 24px; font-weight: bold; color: #667eea; letter-spacing: 2px; font-family: monospace; }
+                      .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px; }
+                      .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+                    </style>
+                  </head>
+                  <body>
+                    <div class="container">
+                      <div class="header">
+                        <h1>🏥 Welcome to EHR System</h1>
+                      </div>
+                      <div class="content">
+                        <p>Hello <strong>${fullName}</strong>,</p>
+                        
+                        <p>Your account has been created successfully! You can now access the EHR System.</p>
+                        
+                        <div class="credentials">
+                          <p><strong>Your Login Credentials:</strong></p>
+                          <p>👤 <strong>Username:</strong> ${username}</p>
+                          <p>🔑 <strong>Temporary Password:</strong></p>
+                          <p class="password">${temporaryPassword}</p>
+                          <p>👔 <strong>Role:</strong> ${
+                            role.charAt(0).toUpperCase() + role.slice(1)
+                          }</p>
+                        </div>
+                        
+                        <div class="warning">
+                          <p><strong>⚠️ Important:</strong></p>
+                          <ul>
+                            <li>This is a temporary password</li>
+                            <li>You will be required to change it on first login</li>
+                            <li>Keep this password secure and do not share it</li>
+                          </ul>
+                        </div>
+                        
+                        <p><strong>Login URL:</strong> <a href="http://localhost:3000">http://localhost:3000</a></p>
+                        
+                        <p>If you have any questions, please contact your administrator.</p>
+                        
+                        <p>Best regards,<br><strong>EHR System Team</strong></p>
+                      </div>
+                      <div class="footer">
+                        <p>This is an automated message. Please do not reply to this email.</p>
+                      </div>
+                    </div>
+                  </body>
+                </html>
+              `,
+            },
+          },
+        },
+      };
+
+      try {
+        await ses.sendEmail(emailParams).promise();
+        console.log("✅ Password email sent to:", email);
+      } catch (emailError) {
+        console.error("❌ Failed to send email:", emailError);
+        // Continue even if email fails
+      }
+
+      return success(
+        {
+          user: newUser,
+          temporaryPassword: temporaryPassword, // ✅ Return in response for admin to see
+        },
+        "User created successfully. Temporary password has been sent to the user's email."
+      );
+    } catch (err) {
+      console.error("Create user error:", err);
+
+      if (err.code === "UsernameExistsException") {
+        return error("Username already exists", 409);
+      }
+
+      return error("Failed to create user", 500, err.message);
+    }
+  })
 );
 
 // GET /users - List all users (with pagination)

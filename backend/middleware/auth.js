@@ -1,134 +1,194 @@
 // middleware/auth.js
 const jwt = require("jsonwebtoken");
 const jwksClient = require("jwks-rsa");
-const { unauthorized } = require("../utils/response");
+const { error: errorResponse } = require("../utils/response");
 
-// JWKS client để verify Cognito JWT
+// JWKS client for Cognito tokens
 const client = jwksClient({
   jwksUri: `https://cognito-idp.${process.env.REGION}.amazonaws.com/${process.env.USER_POOL_ID}/.well-known/jwks.json`,
 });
 
-// Get signing key
-const getKey = (header, callback) => {
+function getKey(header, callback) {
   client.getSigningKey(header.kid, (err, key) => {
     if (err) {
       callback(err);
       return;
     }
-    const signingKey = key.getPublicKey();
+    const signingKey = key.publicKey || key.rsaPublicKey;
     callback(null, signingKey);
   });
-};
+}
 
-// Verify JWT token
+/**
+ * Verify JWT token (supports both Cognito and WebAuthn custom tokens)
+ */
 const verifyToken = (token) => {
   return new Promise((resolve, reject) => {
-    jwt.verify(
-      token,
-      getKey,
-      {
-        issuer: `https://cognito-idp.${process.env.REGION}.amazonaws.com/${process.env.USER_POOL_ID}`,
-        algorithms: ["RS256"],
-      },
-      (err, decoded) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(decoded);
-        }
+    try {
+      // Decode token header to check algorithm
+      const decoded = jwt.decode(token, { complete: true });
+
+      if (!decoded) {
+        reject(new Error("Invalid token format"));
+        return;
       }
-    );
+
+      const header = decoded.header;
+      const payload = decoded.payload;
+
+      console.log("🔍 Token algorithm:", header.alg);
+      console.log("🔍 Token issuer:", payload.iss);
+
+      // ✅ CHECK ALGORITHM TO DETERMINE TOKEN TYPE
+      if (header.alg === "HS256") {
+        // WebAuthn custom token (symmetric key)
+        console.log("🔐 Verifying WebAuthn custom token (HS256)");
+
+        try {
+          const verified = jwt.verify(token, process.env.JWT_SECRET, {
+            algorithms: ["HS256"],
+          });
+          console.log("✅ WebAuthn token verified");
+          resolve(verified);
+        } catch (err) {
+          console.error("❌ WebAuthn token verification failed:", err.message);
+          reject(err);
+        }
+      } else if (header.alg === "RS256") {
+        // Cognito token (asymmetric key)
+        console.log("🔐 Verifying Cognito token (RS256)");
+
+        const cognitoIssuer = `https://cognito-idp.${process.env.REGION}.amazonaws.com/${process.env.USER_POOL_ID}`;
+
+        jwt.verify(
+          token,
+          getKey,
+          {
+            issuer: cognitoIssuer,
+            audience: process.env.CLIENT_ID,
+            algorithms: ["RS256"],
+          },
+          (err, decoded) => {
+            if (err) {
+              console.error(
+                "❌ Cognito token verification failed:",
+                err.message
+              );
+              reject(err);
+            } else {
+              console.log("✅ Cognito token verified");
+              resolve(decoded);
+            }
+          }
+        );
+      } else {
+        console.error("❌ Unsupported algorithm:", header.alg);
+        reject(new Error(`Unsupported algorithm: ${header.alg}`));
+      }
+    } catch (err) {
+      console.error("❌ Token verification error:", err.message);
+      reject(err);
+    }
   });
 };
 
-// Extract token from Authorization header
-const extractToken = (event) => {
-  const authHeader =
-    event.headers?.Authorization || event.headers?.authorization;
-
-  if (!authHeader) {
-    return null;
-  }
-
-  // Format: "Bearer <token>"
-  const parts = authHeader.split(" ");
-  if (parts.length !== 2 || parts[0] !== "Bearer") {
-    return null;
-  }
-
-  return parts[1];
-};
-
-// ✅ THÊM: Check token type
-const getTokenType = (decoded) => {
-  return decoded.token_use; // "id" hoặc "access"
-};
-
-// Middleware: Authenticate request
-const authenticate = async (event) => {
-  try {
-    const token = extractToken(event);
-
-    if (!token) {
-      throw new Error("No token provided");
-    }
-
-    const decoded = await verifyToken(token);
-
-    // ✅ THÊM: Validate token type
-    const tokenType = getTokenType(decoded);
-
-    if (tokenType !== "id") {
-      throw new Error(
-        "Invalid token type. Please use ID token instead of access token."
-      );
-    }
-
-    // Extract user info from token
-    const user = {
-      sub: decoded.sub,
-      username: decoded["cognito:username"],
-      email: decoded.email,
-      name: decoded.name,
-      role: decoded["custom:role"], // ← ID Token có field này
-      employeeId: decoded["custom:employee_id"],
-      department: decoded["custom:department"],
-      groups: decoded["cognito:groups"] || [],
-    };
-
-    // ✅ THÊM: Validate role exists
-    if (!user.role) {
-      console.warn(`User ${user.username} does not have custom:role attribute`);
-    }
-
-    return { authenticated: true, user };
-  } catch (error) {
-    console.error("Authentication error:", error.message);
-    return { authenticated: false, error: error.message };
-  }
-};
-
-// Wrapper for authenticated handlers
+/**
+ * Auth middleware - supports both Cognito and WebAuthn tokens
+ */
 const withAuth = (handler) => {
   return async (event) => {
-    const authResult = await authenticate(event);
+    try {
+      // Extract token from Authorization header
+      const authHeader =
+        event.headers?.authorization || event.headers?.Authorization;
 
-    if (!authResult.authenticated) {
-      return unauthorized("Invalid or expired token");
+      if (!authHeader) {
+        console.error("❌ No authorization header");
+        return errorResponse("Unauthorized - No token provided", 401);
+      }
+
+      const token = authHeader.replace(/^Bearer\s+/i, "");
+
+      if (!token) {
+        console.error("❌ No token in authorization header");
+        return errorResponse("Unauthorized - Invalid token format", 401);
+      }
+
+      // Verify token (auto-detects Cognito vs WebAuthn)
+      const decoded = await verifyToken(token);
+
+      // Attach user info to event
+      event.user = {
+        sub: decoded.sub,
+        email: decoded.email,
+        role: decoded.role || decoded["cognito:groups"]?.[0],
+        username: decoded["cognito:username"] || decoded.email,
+      };
+
+      console.log(
+        "✅ User authenticated:",
+        event.user.email,
+        "Role:",
+        event.user.role
+      );
+
+      // Call the actual handler
+      return await handler(event);
+    } catch (err) {
+      console.error("❌ Auth middleware error:", err.message);
+      return errorResponse("Unauthorized - Invalid token", 401);
     }
+  };
+};
 
-    // Attach user to event
-    event.user = authResult.user;
+/**
+ * Role-based access control middleware
+ */
+const requireRole = (allowedRoles) => {
+  return (handler) => {
+    return withAuth(async (event) => {
+      const userRole = event.user.role;
 
-    // Call actual handler
-    return handler(event);
+      if (!allowedRoles.includes(userRole)) {
+        console.error(
+          `❌ Role ${userRole} not allowed. Required: ${allowedRoles.join(
+            ", "
+          )}`
+        );
+        return errorResponse(
+          `Access denied. Required role: ${allowedRoles.join(" or ")}`,
+          403
+        );
+      }
+
+      console.log(`✅ Role ${userRole} authorized`);
+      return await handler(event);
+    });
+  };
+};
+
+/**
+ * Allow any of the specified roles
+ */
+const requireAnyRole = (allowedRoles) => {
+  return (handler) => {
+    return withAuth(async (event) => {
+      const userRole = event.user.role;
+
+      if (!allowedRoles.includes(userRole)) {
+        return errorResponse(
+          `Access denied. Required role: ${allowedRoles.join(" or ")}`,
+          403
+        );
+      }
+
+      return await handler(event);
+    });
   };
 };
 
 module.exports = {
-  authenticate,
-  verifyToken,
-  extractToken,
   withAuth,
-  getTokenType, // ✅ Export thêm helper function
+  requireRole,
+  requireAnyRole,
 };

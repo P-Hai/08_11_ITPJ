@@ -21,7 +21,7 @@ const sendOTPEmail = async (toEmail, otp, userName = "User") => {
       },
       Message: {
         Subject: {
-          Data: "🔐 EHR System - Login Verification Code",
+          Data: "EHR - Xác thực đăng nhập",
           Charset: "UTF-8",
         },
         Body: {
@@ -51,11 +51,11 @@ const sendOTPEmail = async (toEmail, otp, userName = "User") => {
           <tr>
             <td style="padding: 40px 30px;">
               <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                Hello <strong>${userName}</strong>,
+                Xin chào <strong>${userName}</strong>,
               </p>
               
               <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
-                You have requested to login to the EHR System. Please use the following verification code:
+                Mã đăng nhập của bạn là:
               </p>
               
               <!-- OTP Box -->
@@ -74,15 +74,15 @@ const sendOTPEmail = async (toEmail, otp, userName = "User") => {
               <!-- Warning Box -->
               <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 30px 0; border-radius: 4px;">
                 <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">
-                  <strong>⚠️ Security Notice:</strong><br>
-                  • This code expires in <strong>5 minutes</strong><br>
-                  • Never share this code with anyone<br>
-                  • If you didn't request this, please ignore this email
+                  <strong>⚠️ Lưu ý:</strong><br>
+                  • Mã có hiệu lực <strong>5 phút</strong><br>
+                  • Không chia sẻ mã đăng nhập với người khác<br>
+                  • Nếu bạn không yêu cầu gửi mã hãy bỏ qua thông báo này
                 </p>
               </div>
               
               <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 20px 0 0 0;">
-                If the code doesn't work, you can request a new one from the login page.
+                Nếu mã này không hoạt động, bạn hãy yêu cầu gửi lại mã trên hệ thống.
               </p>
             </td>
           </tr>
