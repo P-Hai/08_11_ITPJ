@@ -1,4 +1,4 @@
-// handlers/auth.js
+// handlers/auth.js - FIXED VERSION
 const AWS = require("aws-sdk");
 const db = require("../config/db");
 const { success, error, validationError } = require("../utils/response");
@@ -7,6 +7,16 @@ const { logAction } = require("../utils/auditLog");
 const cognito = new AWS.CognitoIdentityServiceProvider({
   region: process.env.REGION,
 });
+
+// ✅ NEW: Helper function to normalize group names
+const normalizeGroupName = (groupName) => {
+  const normalized = groupName.toLowerCase();
+  // Remove trailing 's' from plural group names
+  // Receptionists → receptionist
+  // Doctors → doctor
+  // Nurses → nurse
+  return normalized.endsWith("s") ? normalized.slice(0, -1) : normalized;
+};
 
 // Login handler
 const login = async (event) => {
@@ -68,7 +78,7 @@ const login = async (event) => {
         attributes[attr.Name] = attr.Value;
       });
 
-      // ✅ QUAN TRỌNG: Lấy user_id từ database
+      // ✅ Get user_id from database
       let dbUser = null;
       try {
         const dbUserQuery = await db.query(
@@ -111,15 +121,22 @@ const login = async (event) => {
             .promise();
 
           if (groupsData.Groups.length > 0) {
-            userRole = groupsData.Groups[0].GroupName.toLowerCase();
-            console.log("✅ User role from groups:", userRole);
+            const rawGroupName = groupsData.Groups[0].GroupName;
+            // ✅ FIX: Normalize group name (remove trailing 's')
+            userRole = normalizeGroupName(rawGroupName);
+            console.log(
+              "✅ User role from groups:",
+              userRole,
+              "(normalized from:",
+              rawGroupName + ")"
+            );
           }
         } catch (groupError) {
           console.warn("⚠️ Could not get user groups:", groupError.message);
         }
       }
 
-      // Use database role if available
+      // Use database role if available (overrides Cognito)
       if (dbUser && dbUser.role) {
         userRole = dbUser.role;
         console.log("✅ User role from database:", userRole);
@@ -145,17 +162,17 @@ const login = async (event) => {
           refreshToken: tokens.RefreshToken,
           expiresIn: tokens.ExpiresIn,
           user: {
-            // ✅ Cognito info
+            // Cognito info
             sub: attributes.sub,
             username: username,
             email: attributes.email,
             name: attributes.name,
 
-            // ✅ Database info (QUAN TRỌNG!)
+            // Database info
             userId: dbUser ? dbUser.user_id : null,
             user_id: dbUser ? dbUser.user_id : null,
             full_name: dbUser ? dbUser.full_name : attributes.name,
-            role: userRole,
+            role: userRole, // ✅ Normalized role
             phone: dbUser ? dbUser.phone : null,
 
             // Cognito custom attributes (fallback)
@@ -258,7 +275,7 @@ const changePassword = async (event) => {
         attributes[attr.Name] = attr.Value;
       });
 
-      // ✅ Get user from database
+      // Get user from database
       let dbUser = null;
       try {
         const dbUserQuery = await db.query(
@@ -272,6 +289,26 @@ const changePassword = async (event) => {
 
       // Get role
       let userRole = attributes["custom:role"] || "patient";
+
+      if (!userRole || userRole === "patient") {
+        try {
+          const groupsData = await cognito
+            .adminListGroupsForUser({
+              UserPoolId: process.env.USER_POOL_ID,
+              Username: username,
+            })
+            .promise();
+
+          if (groupsData.Groups.length > 0) {
+            const rawGroupName = groupsData.Groups[0].GroupName;
+            // ✅ FIX: Normalize group name
+            userRole = normalizeGroupName(rawGroupName);
+          }
+        } catch (groupError) {
+          console.warn("Could not get user groups:", groupError.message);
+        }
+      }
+
       if (dbUser && dbUser.role) {
         userRole = dbUser.role;
       }

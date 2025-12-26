@@ -39,6 +39,9 @@ function VitalSignsList() {
     setError("");
     try {
       const token = localStorage.getItem("idToken");
+
+      console.log("🔍 Fetching vital signs for patient:", patientId); // Debug
+
       const response = await axios.get(
         `${API_BASE_URL}/vital-signs/patient/${patientId}`,
         {
@@ -46,11 +49,20 @@ function VitalSignsList() {
         }
       );
 
+      console.log("📦 API Response:", response.data); // Debug
+
       if (response.data.success) {
-        setVitalSigns(response.data.data || []);
+        // ✅ FIX: Handle both formats
+        const vitalSignsData = Array.isArray(response.data.data)
+          ? response.data.data
+          : response.data.data?.vital_signs || [];
+
+        console.log("✅ Vital signs data:", vitalSignsData); // Debug
+        setVitalSigns(vitalSignsData);
       }
     } catch (err) {
-      console.error("Error fetching vital signs:", err);
+      console.error("❌ Error fetching vital signs:", err);
+      console.error("Error response:", err.response?.data); // Debug
       setError("Failed to load vital signs");
       setVitalSigns([]);
     } finally {

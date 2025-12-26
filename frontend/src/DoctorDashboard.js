@@ -1,9 +1,12 @@
+// src/DoctorDashboard.js
 import React, { useState } from "react";
 import PatientsList from "./components/PatientsList";
 import CreateMedicalRecordForm from "./components/CreateMedicalRecordForm";
 import MedicalRecordsList from "./components/MedicalRecordsList";
 import CreatePrescriptionForm from "./components/CreatePrescriptionForm";
-import BiometricSetup from "./components/BiometricSetup"; // ⭐ NEW IMPORT
+import BiometricSetup from "./components/BiometricSetup";
+import VitalSignsForm from "./components/VitalSignsForm"; // ⭐ NEW
+import VitalSignsList from "./components/VitalSignsList"; // ⭐ NEW
 
 function DoctorDashboard() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -40,18 +43,20 @@ function DoctorDashboard() {
       {/* Navigation Tabs */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4">
-          <nav className="flex space-x-8">
+          <nav className="flex space-x-8 overflow-x-auto">
             {[
               ["overview", "Overview"],
               ["patients", "Patients"],
               ["records", "Medical Records"],
               ["prescriptions", "Prescriptions"],
-              ["biometric", "🔐 Biometric Setup"], // ⭐ NEW TAB
+              ["vitals", "Record Vital Signs"], // ⭐ NEW
+              ["vitals-history", "📊 Vital Signs History"], // ⭐ NEW
+              ["biometric", "🔐 Biometric Setup"],
             ].map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                   activeTab === key
                     ? "border-blue-500 text-blue-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -158,7 +163,33 @@ function DoctorDashboard() {
           </div>
         )}
 
-        {/* ⭐ BIOMETRIC SETUP */}
+        {/* ⭐ RECORD VITAL SIGNS */}
+        {activeTab === "vitals" && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
+              <p className="text-blue-700">
+                <strong>Record Vital Signs:</strong> Record patient vital signs
+                including blood pressure, heart rate, temperature, and more.
+              </p>
+            </div>
+            <VitalSignsForm />
+          </div>
+        )}
+
+        {/* ⭐ VITAL SIGNS HISTORY */}
+        {activeTab === "vitals-history" && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
+              <p className="text-blue-700">
+                <strong>Vital Signs History:</strong> View and track patient
+                vital signs over time.
+              </p>
+            </div>
+            <VitalSignsList />
+          </div>
+        )}
+
+        {/* BIOMETRIC SETUP */}
         {activeTab === "biometric" && (
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-bold text-gray-800 mb-6">

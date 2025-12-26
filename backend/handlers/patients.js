@@ -1,4 +1,4 @@
-// handlers/patients.js
+// handlers/patients.js - FIXED VERSION
 const db = require("../config/db");
 const crypto = require("crypto");
 const {
@@ -48,7 +48,7 @@ const decrypt = (text) => {
   }
 };
 
-// CREATE Patient (Receptionist only) - ✅ FIX BUG 2: Removed 'admin'
+// CREATE Patient (Receptionist only)
 const create = withAuth(
   requireAnyRole(["receptionist"])(
     withAuditLog(
@@ -160,9 +160,10 @@ const create = withAuth(
   )
 );
 
-// GET Patient by ID - ✅ Admin removed
+// GET Patient by ID - ✅ FIXED: ADDED RECEPTIONIST
 const getById = withAuth(
   requireAnyRole(["receptionist", "nurse", "doctor"])(
+    // ✅ ALL 3 ROLES
     withAuditLog(
       "READ",
       "patients"
@@ -234,9 +235,10 @@ const getById = withAuth(
   )
 );
 
-// SEARCH Patients - ✅ Admin removed
+// SEARCH Patients - ✅ FIXED: ADDED RECEPTIONIST
 const search = withAuth(
   requireAnyRole(["receptionist", "nurse", "doctor"])(
+    // ✅ ALL 3 ROLES
     withAuditLog(
       "SEARCH",
       "patients"

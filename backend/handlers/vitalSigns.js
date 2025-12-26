@@ -192,20 +192,9 @@ const getByPatient = withAuth(
 
         const total = parseInt(countResult.rows[0].count);
 
+        // ✅ FIX: Return array directly, NOT nested object
         return success(
-          {
-            patient: {
-              patient_id: patient.patient_id,
-              full_name: patient.full_name,
-            },
-            vital_signs: result.rows,
-            pagination: {
-              total,
-              limit,
-              offset,
-              hasMore: offset + result.rows.length < total,
-            },
-          },
+          result.rows, // ← THAY ĐỔI: Return array trực tiếp
           "Vital signs retrieved successfully"
         );
       } catch (err) {

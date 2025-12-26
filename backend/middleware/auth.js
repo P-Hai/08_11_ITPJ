@@ -1,14 +1,25 @@
-// middleware/auth.js
+// middleware/auth.js - FIXED VERSION WITH GROUP NAME NORMALIZATION
 const jwt = require("jsonwebtoken");
 const jwksClient = require("jwks-rsa");
-const { error: errorResponse } = require("../utils/response");
+const { error } = require("../utils/response");
 
-// JWKS client for Cognito tokens
+// JWKS client for Cognito
 const client = jwksClient({
   jwksUri: `https://cognito-idp.${process.env.REGION}.amazonaws.com/${process.env.USER_POOL_ID}/.well-known/jwks.json`,
+  cache: true,
+  cacheMaxAge: 600000,
 });
 
-function getKey(header, callback) {
+// ✅ NEW: Helper function to normalize group names
+// Converts: Receptionists → receptionist, Doctors → doctor, Nurses → nurse, Admins → admin
+const normalizeGroupName = (groupName) => {
+  const normalized = groupName.toLowerCase();
+  // Remove trailing 's' from plural group names
+  return normalized.endsWith("s") ? normalized.slice(0, -1) : normalized;
+};
+
+// Get signing key
+const getKey = (header, callback) => {
   client.getSigningKey(header.kid, (err, key) => {
     if (err) {
       callback(err);
@@ -17,178 +28,124 @@ function getKey(header, callback) {
     const signingKey = key.publicKey || key.rsaPublicKey;
     callback(null, signingKey);
   });
-}
+};
 
-/**
- * Verify JWT token (supports both Cognito and WebAuthn custom tokens)
- */
+// Verify JWT token
 const verifyToken = (token) => {
   return new Promise((resolve, reject) => {
-    try {
-      // Decode token header to check algorithm
-      const decoded = jwt.decode(token, { complete: true });
-
-      if (!decoded) {
-        reject(new Error("Invalid token format"));
-        return;
-      }
-
-      const header = decoded.header;
-      const payload = decoded.payload;
-
-      console.log("🔍 Token algorithm:", header.alg);
-      console.log("🔍 Token issuer:", payload.iss);
-
-      // ✅ CHECK ALGORITHM TO DETERMINE TOKEN TYPE
-      if (header.alg === "HS256") {
-        // WebAuthn custom token (symmetric key)
-        console.log("🔐 Verifying WebAuthn custom token (HS256)");
-
-        try {
-          const verified = jwt.verify(token, process.env.JWT_SECRET, {
-            algorithms: ["HS256"],
-          });
-          console.log("✅ WebAuthn token verified");
-          resolve(verified);
-        } catch (err) {
-          console.error("❌ WebAuthn token verification failed:", err.message);
+    jwt.verify(
+      token,
+      getKey,
+      {
+        issuer: `https://cognito-idp.${process.env.REGION}.amazonaws.com/${process.env.USER_POOL_ID}`,
+        algorithms: ["RS256"],
+      },
+      (err, decoded) => {
+        if (err) {
           reject(err);
+        } else {
+          resolve(decoded);
         }
-      } else if (header.alg === "RS256") {
-        // Cognito token (asymmetric key)
-        console.log("🔐 Verifying Cognito token (RS256)");
-
-        const cognitoIssuer = `https://cognito-idp.${process.env.REGION}.amazonaws.com/${process.env.USER_POOL_ID}`;
-
-        jwt.verify(
-          token,
-          getKey,
-          {
-            issuer: cognitoIssuer,
-            audience: process.env.CLIENT_ID,
-            algorithms: ["RS256"],
-          },
-          (err, decoded) => {
-            if (err) {
-              console.error(
-                "❌ Cognito token verification failed:",
-                err.message
-              );
-              reject(err);
-            } else {
-              console.log("✅ Cognito token verified");
-              resolve(decoded);
-            }
-          }
-        );
-      } else {
-        console.error("❌ Unsupported algorithm:", header.alg);
-        reject(new Error(`Unsupported algorithm: ${header.alg}`));
       }
-    } catch (err) {
-      console.error("❌ Token verification error:", err.message);
-      reject(err);
-    }
+    );
   });
 };
 
-/**
- * Auth middleware - supports both Cognito and WebAuthn tokens
- */
+// Auth middleware
 const withAuth = (handler) => {
-  return async (event) => {
+  return async (event, context) => {
     try {
-      // Extract token from Authorization header
+      // Get token from Authorization header
       const authHeader =
         event.headers?.authorization || event.headers?.Authorization;
 
-      if (!authHeader) {
-        console.error("❌ No authorization header");
-        return errorResponse("Unauthorized - No token provided", 401);
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return error("Missing or invalid authorization header", 401);
       }
 
-      const token = authHeader.replace(/^Bearer\s+/i, "");
+      const token = authHeader.substring(7);
 
-      if (!token) {
-        console.error("❌ No token in authorization header");
-        return errorResponse("Unauthorized - Invalid token format", 401);
+      // Verify token
+      let decoded;
+      try {
+        decoded = await verifyToken(token);
+      } catch (err) {
+        console.error("Token verification failed:", err.message);
+        return error("Invalid or expired token", 401);
       }
 
-      // Verify token (auto-detects Cognito vs WebAuthn)
-      const decoded = await verifyToken(token);
+      // ✅ FIX: Extract and normalize role from cognito:groups
+      let userRole = "patient"; // default
 
-      // Attach user info to event
+      if (decoded["cognito:groups"] && decoded["cognito:groups"].length > 0) {
+        const rawGroupName = decoded["cognito:groups"][0];
+        userRole = normalizeGroupName(rawGroupName);
+        console.log(
+          `✅ User role from groups: ${userRole} (normalized from: ${rawGroupName})`
+        );
+      } else if (decoded["custom:role"]) {
+        userRole = decoded["custom:role"].toLowerCase();
+        console.log(`✅ User role from custom attribute: ${userRole}`);
+      }
+
+      // Add user info to event
       event.user = {
         sub: decoded.sub,
         email: decoded.email,
-        role: decoded.role || decoded["cognito:groups"]?.[0],
-        username: decoded["cognito:username"] || decoded.email,
+        username: decoded["cognito:username"],
+        role: userRole, // ✅ Normalized role
+        groups: decoded["cognito:groups"] || [],
       };
 
       console.log(
-        "✅ User authenticated:",
-        event.user.email,
-        "Role:",
-        event.user.role
+        `✅ Authenticated user: ${event.user.username} (${event.user.role})`
       );
 
-      // Call the actual handler
-      return await handler(event);
+      // Call handler
+      return await handler(event, context);
     } catch (err) {
-      console.error("❌ Auth middleware error:", err.message);
-      return errorResponse("Unauthorized - Invalid token", 401);
+      console.error("Auth middleware error:", err);
+      return error("Authentication failed", 500, err.message);
     }
   };
 };
 
-/**
- * Role-based access control middleware
- */
-const requireRole = (allowedRoles) => {
+// RBAC middleware
+const requireAnyRole = (allowedRoles) => {
   return (handler) => {
-    return withAuth(async (event) => {
-      const userRole = event.user.role;
+    return async (event, context) => {
+      const userRole = event.user?.role;
+
+      if (!userRole) {
+        console.error("❌ No role found in event.user");
+        return error("Access denied. No role found.", 403);
+      }
 
       if (!allowedRoles.includes(userRole)) {
         console.error(
-          `❌ Role ${userRole} not allowed. Required: ${allowedRoles.join(
+          `❌ Access denied. User role: ${userRole}, Required: ${allowedRoles.join(
             ", "
           )}`
         );
-        return errorResponse(
-          `Access denied. Required role: ${allowedRoles.join(" or ")}`,
+        return error(
+          `Access denied. Required roles: ${allowedRoles.join(", ")}`,
           403
         );
       }
 
-      console.log(`✅ Role ${userRole} authorized`);
-      return await handler(event);
-    });
+      console.log(`✅ RBAC check passed. User role: ${userRole}`);
+      return await handler(event, context);
+    };
   };
 };
 
-/**
- * Allow any of the specified roles
- */
-const requireAnyRole = (allowedRoles) => {
-  return (handler) => {
-    return withAuth(async (event) => {
-      const userRole = event.user.role;
-
-      if (!allowedRoles.includes(userRole)) {
-        return errorResponse(
-          `Access denied. Required role: ${allowedRoles.join(" or ")}`,
-          403
-        );
-      }
-
-      return await handler(event);
-    });
-  };
+// Admin-only middleware
+const requireAdmin = (handler) => {
+  return requireAnyRole(["admin"])(handler);
 };
 
 module.exports = {
   withAuth,
-  requireRole,
   requireAnyRole,
+  requireAdmin,
 };
