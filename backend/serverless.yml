@@ -357,42 +357,37 @@ functions:
   getUploadUrl:
     handler: handlers/patientFiles.getUploadUrl
     events:
-      - http:
+      - httpApi:
           path: /patient-files/upload-url
           method: post
-          cors: true
 
   saveFileMetadata:
     handler: handlers/patientFiles.saveFileMetadata
     events:
-      - http:
+      - httpApi:
           path: /patient-files/metadata
           method: post
-          cors: true
 
   getFilesByPatient:
     handler: handlers/patientFiles.getFilesByPatient
     events:
-      - http:
+      - httpApi:
           path: /patient-files/patient/{patientId}
           method: get
-          cors: true
 
   getDownloadUrl:
     handler: handlers/patientFiles.getDownloadUrl
     events:
-      - http:
+      - httpApi:
           path: /patient-files/download/{fileId}
           method: get
-          cors: true
 
   deleteFile:
     handler: handlers/patientFiles.deleteFile
     events:
-      - http:
+      - httpApi:
           path: /patient-files/{fileId}
           method: delete
-          cors: true
 
 package:
   individually: false

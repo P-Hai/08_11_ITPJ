@@ -1,9 +1,11 @@
 // src/components/CreateMedicalRecordForm.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "../aws-config";
 
 function CreateMedicalRecordForm({ onSuccess, onCancel }) {
+  const [patients, setPatients] = useState([]);
+  const [loadingPatients, setLoadingPatients] = useState(true);
   const [formData, setFormData] = useState({
     patientId: "",
     chiefComplaint: "",
@@ -15,6 +17,32 @@ function CreateMedicalRecordForm({ onSuccess, onCancel }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Fetch patients on mount
+  useEffect(() => {
+    fetchPatients();
+  }, []);
+
+  const fetchPatients = async () => {
+    try {
+      setLoadingPatients(true);
+      const token = localStorage.getItem("idToken");
+      const response = await axios.get(`${API_BASE_URL}/patients/search`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.data.success) {
+        const patientsData =
+          response.data.data?.patients || response.data.data || [];
+        setPatients(Array.isArray(patientsData) ? patientsData : []);
+      }
+    } catch (err) {
+      console.error("Error fetching patients:", err);
+      setPatients([]);
+    } finally {
+      setLoadingPatients(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -79,23 +107,40 @@ function CreateMedicalRecordForm({ onSuccess, onCancel }) {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Patient ID */}
+        {/* Patient Selection */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Patient ID <span className="text-red-500">*</span>
+            Select Patient <span className="text-red-500">*</span>
           </label>
-          <input
-            type="text"
-            name="patientId"
-            value={formData.patientId}
-            onChange={handleChange}
-            required
-            placeholder="Enter patient ID or UUID"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            You can copy the Patient ID from the Patients list
-          </p>
+          {loadingPatients ? (
+            <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+              Loading patients...
+            </div>
+          ) : (
+            <select
+              name="patientId"
+              value={formData.patientId}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">-- Select a patient --</option>
+              {patients.map((patient) => (
+                <option key={patient.patient_id} value={patient.patient_id}>
+                  {patient.full_name} - DOB:{" "}
+                  {patient.date_of_birth
+                    ? new Date(patient.date_of_birth).toLocaleDateString()
+                    : "N/A"}{" "}
+                  - Phone: {patient.phone || "N/A"}
+                </option>
+              ))}
+            </select>
+          )}
+          {patients.length === 0 && !loadingPatients && (
+            <p className="text-sm text-gray-500 mt-1">
+              No patients found. Please register patients first.
+            </p>
+          )}
         </div>
 
         {/* Chief Complaint */}
@@ -197,7 +242,7 @@ function CreateMedicalRecordForm({ onSuccess, onCancel }) {
         <div className="flex gap-4 pt-4">
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || patients.length === 0}
             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {loading ? (

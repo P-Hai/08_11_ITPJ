@@ -1,9 +1,11 @@
 // src/components/CreatePrescriptionForm.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "../aws-config";
 
 function CreatePrescriptionForm({ onSuccess, onCancel }) {
+  const [patients, setPatients] = useState([]);
+  const [loadingPatients, setLoadingPatients] = useState(true);
   const [formData, setFormData] = useState({
     patientId: "",
     medicalRecordId: "",
@@ -19,6 +21,32 @@ function CreatePrescriptionForm({ onSuccess, onCancel }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Fetch patients on mount
+  useEffect(() => {
+    fetchPatients();
+  }, []);
+
+  const fetchPatients = async () => {
+    try {
+      setLoadingPatients(true);
+      const token = localStorage.getItem("idToken");
+      const response = await axios.get(`${API_BASE_URL}/patients/search`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.data.success) {
+        const patientsData =
+          response.data.data?.patients || response.data.data || [];
+        setPatients(Array.isArray(patientsData) ? patientsData : []);
+      }
+    } catch (err) {
+      console.error("Error fetching patients:", err);
+      setPatients([]);
+    } finally {
+      setLoadingPatients(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -66,14 +94,14 @@ function CreatePrescriptionForm({ onSuccess, onCancel }) {
       const token = localStorage.getItem("idToken");
       const user = JSON.parse(localStorage.getItem("user"));
 
-      // Format đơn giản hơn
+      // Format payload
       const payload = {
         patient_id: formData.patientId,
         doctor_id: user.employeeId || user.username,
         medications: formData.medications.filter((med) => med.name.trim()),
       };
 
-      // Chỉ thêm medical_record_id nếu có giá trị
+      // Only add medical_record_id if provided
       if (formData.medicalRecordId && formData.medicalRecordId.trim()) {
         payload.medical_record_id = formData.medicalRecordId;
       }
@@ -104,7 +132,6 @@ function CreatePrescriptionForm({ onSuccess, onCancel }) {
       console.error("Error creating prescription:", err);
       console.error("Error response:", err.response?.data);
 
-      // Hiển thị error chi tiết
       const errorMsg =
         err.response?.data?.message ||
         err.response?.data?.details ||
@@ -130,36 +157,58 @@ function CreatePrescriptionForm({ onSuccess, onCancel }) {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Patient ID */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Patient ID <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
+        {/* Patient Selection */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Select Patient <span className="text-red-500">*</span>
+          </label>
+          {loadingPatients ? (
+            <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+              Loading patients...
+            </div>
+          ) : (
+            <select
               name="patientId"
               value={formData.patientId}
               onChange={handleChange}
               required
-              placeholder="Enter patient ID"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+              <option value="">-- Select a patient --</option>
+              {patients.map((patient) => (
+                <option key={patient.patient_id} value={patient.patient_id}>
+                  {patient.full_name} - DOB:{" "}
+                  {patient.date_of_birth
+                    ? new Date(patient.date_of_birth).toLocaleDateString()
+                    : "N/A"}{" "}
+                  - Phone: {patient.phone || "N/A"}
+                </option>
+              ))}
+            </select>
+          )}
+          {patients.length === 0 && !loadingPatients && (
+            <p className="text-sm text-gray-500 mt-1">
+              No patients found. Please register patients first.
+            </p>
+          )}
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Medical Record ID (Optional)
-            </label>
-            <input
-              type="text"
-              name="medicalRecordId"
-              value={formData.medicalRecordId}
-              onChange={handleChange}
-              placeholder="Link to medical record"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+        {/* Medical Record ID (Optional) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Medical Record ID (Optional)
+          </label>
+          <input
+            type="text"
+            name="medicalRecordId"
+            value={formData.medicalRecordId}
+            onChange={handleChange}
+            placeholder="Link to medical record (optional)"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Leave blank if not linking to a specific medical record
+          </p>
         </div>
 
         {/* Medications */}
@@ -220,7 +269,7 @@ function CreatePrescriptionForm({ onSuccess, onCancel }) {
                       }
                       required
                       placeholder="e.g., Paracetamol"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     />
                   </div>
 
@@ -236,7 +285,7 @@ function CreatePrescriptionForm({ onSuccess, onCancel }) {
                       }
                       required
                       placeholder="e.g., 500mg"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     />
                   </div>
 
@@ -256,7 +305,7 @@ function CreatePrescriptionForm({ onSuccess, onCancel }) {
                       }
                       required
                       placeholder="e.g., 3 times daily"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     />
                   </div>
 
@@ -276,7 +325,7 @@ function CreatePrescriptionForm({ onSuccess, onCancel }) {
                       }
                       required
                       placeholder="e.g., 7 days"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     />
                   </div>
 
@@ -295,7 +344,7 @@ function CreatePrescriptionForm({ onSuccess, onCancel }) {
                         )
                       }
                       placeholder="e.g., Take after meals"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -308,8 +357,8 @@ function CreatePrescriptionForm({ onSuccess, onCancel }) {
         <div className="flex gap-4 pt-4">
           <button
             type="submit"
-            disabled={loading}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+            disabled={loading || patients.length === 0}
+            className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {loading ? "Creating..." : "Create Prescription"}
           </button>
