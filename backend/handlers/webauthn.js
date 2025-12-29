@@ -3,6 +3,7 @@ const db = require("../config/db");
 const { success, error, validationError } = require("../utils/response");
 const { withAuth } = require("../middleware/auth");
 const { logAction } = require("../utils/auditLog");
+const AWS = require("aws-sdk"); // ✅ ADD THIS
 
 const {
   generateRegistrationOptions,
@@ -10,6 +11,11 @@ const {
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
 } = require("@simplewebauthn/server");
+
+// ✅ ADD THIS - Initialize Cognito
+const cognito = new AWS.CognitoIdentityServiceProvider({
+  region: process.env.REGION || "ap-southeast-1",
+});
 
 // WebAuthn configuration
 const rpName = "EHR System";
@@ -196,7 +202,7 @@ const startAuthentication = async (event) => {
 
     try {
       userQuery = await db.query(
-        `SELECT u.user_id, u.email, u.full_name, u.role, u.cognito_sub
+        `SELECT u.user_id, u.email, u.full_name, u.role, u.cognito_sub, u.cognito_username
          FROM users u 
          WHERE u.cognito_username = $1 OR u.email = $1
          LIMIT 1`,
@@ -210,7 +216,7 @@ const startAuthentication = async (event) => {
 
       // Fallback: try email only
       userQuery = await db.query(
-        `SELECT u.user_id, u.email, u.full_name, u.role, u.cognito_sub
+        `SELECT u.user_id, u.email, u.full_name, u.role, u.cognito_sub, u.cognito_username
          FROM users u 
          WHERE u.email = $1
          LIMIT 1`,
@@ -272,6 +278,7 @@ const startAuthentication = async (event) => {
         userEmail: user.email,
         userName: user.full_name,
         userRole: user.role,
+        cognitoUsername: user.cognito_username, // ✅ ADD THIS
       },
       "Authentication options generated"
     );
@@ -297,8 +304,9 @@ const finishAuthentication = async (event) => {
       return validationError({ userId: "User ID is required" });
     }
 
+    // ✅ GET USER WITH COGNITO_USERNAME
     const userQuery = await db.query(
-      "SELECT user_id, email, full_name, role, cognito_sub FROM users WHERE user_id = $1",
+      "SELECT user_id, email, full_name, role, cognito_sub, cognito_username FROM users WHERE user_id = $1",
       [userId]
     );
 
@@ -359,6 +367,7 @@ const finishAuthentication = async (event) => {
       return error("Authentication verification failed", 401);
     }
 
+    // ✅ UPDATE CREDENTIAL COUNTER
     await db.query(
       "UPDATE webauthn_credentials SET counter = $1, last_used_at = NOW() WHERE credential_id = $2",
       [verification.authenticationInfo.newCounter, credentialId]
@@ -372,85 +381,110 @@ const finishAuthentication = async (event) => {
       userId,
     ]);
 
-    await logAction({
-      userId: user.user_id,
-      userEmail: user.email,
-      userRole: user.role,
-      action: "WEBAUTHN_LOGIN",
-      resourceType: "auth",
-      ipAddress: event.requestContext?.http?.sourceIp || "unknown",
-      userAgent: event.headers?.["user-agent"] || "unknown",
-      status: "success",
-    });
+    // ✅ GET COGNITO TOKENS
+    try {
+      console.log("🔐 Getting Cognito user:", user.cognito_username);
 
-    // Generate JWT tokens
-    const jwt = require("jsonwebtoken");
-    const crypto = require("crypto");
+      // Get user from Cognito
+      const cognitoUser = await cognito
+        .adminGetUser({
+          UserPoolId: process.env.USER_POOL_ID,
+          Username: user.cognito_username,
+        })
+        .promise();
 
-    const tokenPayload = {
-      sub: user.cognito_sub,
-      email: user.email,
-      email_verified: true,
-      name: user.full_name,
-      "cognito:username": user.cognito_sub,
-      "cognito:groups": [user.role],
-      role: user.role,
-      auth_time: Math.floor(Date.now() / 1000),
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 3600,
-    };
+      // Get groups
+      const groups = await cognito
+        .adminListGroupsForUser({
+          UserPoolId: process.env.USER_POOL_ID,
+          Username: user.cognito_username,
+        })
+        .promise();
 
-    const idToken = jwt.sign(
-      tokenPayload,
-      process.env.JWT_SECRET || "EHR_SYSTEM_SECRET_KEY_2025",
-      {
-        algorithm: "HS256",
-        issuer: `https://cognito-idp.${process.env.REGION}.amazonaws.com/${process.env.USER_POOL_ID}`,
-        audience: process.env.CLIENT_ID,
+      let userRole = "patient";
+      if (groups.Groups.length > 0) {
+        const rawGroupName = groups.Groups[0].GroupName;
+        userRole = rawGroupName.toLowerCase().replace(/s$/, "");
       }
-    );
 
-    const accessToken = jwt.sign(
-      {
-        sub: user.cognito_sub,
-        client_id: process.env.CLIENT_ID,
-        username: user.cognito_sub,
-        token_use: "access",
-        scope: "aws.cognito.signin.user.admin",
-        auth_time: Math.floor(Date.now() / 1000),
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + 3600,
-      },
-      process.env.JWT_SECRET || "EHR_SYSTEM_SECRET_KEY_2025",
-      {
-        algorithm: "HS256",
+      // Set temporary password for Cognito auth
+      const tempPassword =
+        process.env.WEBAUTHN_BYPASS_PASSWORD || "WebAuthn@2025!";
+
+      try {
+        // Try to set password (may fail if already set)
+        await cognito
+          .adminSetUserPassword({
+            UserPoolId: process.env.USER_POOL_ID,
+            Username: user.cognito_username,
+            Password: tempPassword,
+            Permanent: true,
+          })
+          .promise();
+      } catch (e) {
+        // Password already set, continue
+        console.log("Password already set, continuing...");
       }
-    );
 
-    const refreshToken = crypto.randomBytes(64).toString("base64");
+      // Get tokens
+      console.log("🔑 Initiating auth...");
+      const authResult = await cognito
+        .adminInitiateAuth({
+          AuthFlow: "ADMIN_NO_SRP_AUTH",
+          UserPoolId: process.env.USER_POOL_ID,
+          ClientId: process.env.CLIENT_ID,
+          AuthParameters: {
+            USERNAME: user.cognito_username,
+            PASSWORD: tempPassword,
+          },
+        })
+        .promise();
 
-    console.log("✅ Tokens generated successfully");
+      const tokens = authResult.AuthenticationResult;
+      const attrs = {};
+      cognitoUser.UserAttributes.forEach((a) => (attrs[a.Name] = a.Value));
 
-    return success(
-      {
-        verified: true,
-        user: {
-          userId: user.user_id,
-          user_id: user.user_id,
-          sub: user.cognito_sub,
-          email: user.email,
-          name: user.full_name,
-          full_name: user.full_name,
-          role: user.role,
+      await logAction({
+        userId: user.user_id,
+        userEmail: user.email,
+        userRole: user.role,
+        action: "WEBAUTHN_LOGIN",
+        resourceType: "auth",
+        ipAddress: event.requestContext?.http?.sourceIp || "unknown",
+        userAgent: event.headers?.["user-agent"] || "unknown",
+        status: "success",
+      });
+
+      console.log("✅ Tokens generated successfully");
+
+      // ✅ RETURN TOKENS
+      return success(
+        {
+          idToken: tokens.IdToken,
+          accessToken: tokens.AccessToken,
+          refreshToken: tokens.RefreshToken,
+          expiresIn: tokens.ExpiresIn,
+          user: {
+            sub: attrs.sub,
+            username: user.cognito_username,
+            email: attrs.email,
+            name: attrs.name,
+            userId: user.user_id,
+            user_id: user.user_id,
+            full_name: user.full_name,
+            role: userRole,
+          },
         },
-        idToken: idToken,
-        accessToken: accessToken,
-        refreshToken: refreshToken,
-        requiresMFA: false,
-        expiresIn: 3600,
-      },
-      "Biometric authentication successful"
-    );
+        "Biometric authentication successful"
+      );
+    } catch (cognitoError) {
+      console.error("❌ Cognito token generation error:", cognitoError);
+      return error(
+        "Failed to generate authentication tokens",
+        500,
+        cognitoError.message
+      );
+    }
   } catch (err) {
     console.error("❌ Finish authentication error:", err);
     console.error("Error stack:", err.stack);

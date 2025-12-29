@@ -26,17 +26,18 @@ provider:
     WEBAUTHN_ORIGIN: http://localhost:3000
     NODE_ENV: ${self:provider.stage}
 
+    # ADDED
+    PATIENT_FILES_BUCKET: ehr-backend-api-patient-files-dev
+
   iam:
     role:
       statements:
-        # SES Permissions
         - Effect: Allow
           Action:
             - ses:SendEmail
             - ses:SendRawEmail
           Resource: "*"
 
-        # Cognito Permissions
         - Effect: Allow
           Action:
             - cognito-idp:AdminGetUser
@@ -51,20 +52,29 @@ provider:
           Resource:
             - arn:aws:cognito-idp:${self:provider.region}:*:userpool/${env:USER_POOL_ID}
 
-        # Secrets Manager
         - Effect: Allow
           Action:
             - secretsmanager:GetSecretValue
           Resource:
             - arn:aws:secretsmanager:${self:provider.region}:*:secret:ehr-system/*
 
-        # CloudWatch Logs
         - Effect: Allow
           Action:
             - logs:CreateLogGroup
             - logs:CreateLogStream
             - logs:PutLogEvents
           Resource: "*"
+
+        # ADDED S3 PERMISSIONS
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:DeleteObject
+            - s3:ListBucket
+          Resource:
+            - arn:aws:s3:::ehr-backend-api-patient-files-dev
+            - arn:aws:s3:::ehr-backend-api-patient-files-dev/*
 
   httpApi:
     cors:
@@ -84,14 +94,11 @@ plugins:
   - serverless-offline
   - serverless-dotenv-plugin
 
-# ✅ CUSTOM SECTION - ADD JWT_SECRET
 custom:
   JWT_SECRET: EHR_SYSTEM_WEBAUTHN_SECRET_KEY_2025_SECURE_TOKEN_CHANGE_IN_PRODUCTION
 
 functions:
-  # ============================================
-  # WEBAUTHN BIOMETRIC AUTHENTICATION
-  # ============================================
+  # ===== WEBAUTHN =====
   webauthnRegisterStart:
     handler: handlers/webauthn.startRegistration
     events:
@@ -134,9 +141,7 @@ functions:
           path: /webauthn/credentials/{id}
           method: delete
 
-  # ============================================
-  # AUTHENTICATION
-  # ============================================
+  # ===== AUTH =====
   login:
     handler: handlers/auth.login
     events:
@@ -158,9 +163,7 @@ functions:
           path: /auth/refresh
           method: post
 
-  # ============================================
-  # MFA FUNCTIONS
-  # ============================================
+  # ===== MFA =====
   initMFA:
     handler: handlers/mfa.initMFA
     events:
@@ -182,9 +185,7 @@ functions:
           path: /mfa/status/{userId}
           method: get
 
-  # ============================================
-  # ADMIN USER MANAGEMENT
-  # ============================================
+  # ===== USERS =====
   createUser:
     handler: handlers/users.createUser
     events:
@@ -213,9 +214,7 @@ functions:
           path: /users/{id}/reset-password
           method: post
 
-  # ============================================
-  # PATIENTS
-  # ============================================
+  # ===== PATIENTS =====
   createPatient:
     handler: handlers/patients.create
     events:
@@ -244,9 +243,7 @@ functions:
           path: /patients/{id}
           method: put
 
-  # ============================================
-  # PATIENT PORTAL
-  # ============================================
+  # ===== PATIENT PORTAL =====
   getMyProfile:
     handler: handlers/patientPortal.getMyProfile
     events:
@@ -275,9 +272,7 @@ functions:
           path: /vital-signs/me
           method: get
 
-  # ============================================
-  # VITAL SIGNS
-  # ============================================
+  # ===== VITAL SIGNS =====
   createVitalSigns:
     handler: handlers/vitalSigns.create
     events:
@@ -299,9 +294,7 @@ functions:
           path: /vital-signs/patient/{patientId}/latest
           method: get
 
-  # ============================================
-  # MEDICAL RECORDS
-  # ============================================
+  # ===== MEDICAL RECORDS =====
   createMedicalRecord:
     handler: handlers/medicalRecords.create
     events:
@@ -330,9 +323,7 @@ functions:
           path: /medical-records/{id}
           method: put
 
-  # ============================================
-  # PRESCRIPTIONS
-  # ============================================
+  # ===== PRESCRIPTIONS =====
   createPrescription:
     handler: handlers/prescriptions.create
     events:
@@ -354,15 +345,54 @@ functions:
           path: /prescriptions/patient/{patientId}
           method: get
 
-  # ============================================
-  # AUDIT LOGS
-  # ============================================
+  # ===== AUDIT LOGS =====
   getAuditLogs:
     handler: handlers/auditLogs.getLogs
     events:
       - httpApi:
           path: /audit-logs
           method: get
+
+  # ===== PATIENT FILES =====
+  getUploadUrl:
+    handler: handlers/patientFiles.getUploadUrl
+    events:
+      - http:
+          path: /patient-files/upload-url
+          method: post
+          cors: true
+
+  saveFileMetadata:
+    handler: handlers/patientFiles.saveFileMetadata
+    events:
+      - http:
+          path: /patient-files/metadata
+          method: post
+          cors: true
+
+  getFilesByPatient:
+    handler: handlers/patientFiles.getFilesByPatient
+    events:
+      - http:
+          path: /patient-files/patient/{patientId}
+          method: get
+          cors: true
+
+  getDownloadUrl:
+    handler: handlers/patientFiles.getDownloadUrl
+    events:
+      - http:
+          path: /patient-files/download/{fileId}
+          method: get
+          cors: true
+
+  deleteFile:
+    handler: handlers/patientFiles.deleteFile
+    events:
+      - http:
+          path: /patient-files/{fileId}
+          method: delete
+          cors: true
 
 package:
   individually: false
@@ -371,3 +401,29 @@ package:
     - "!test/**"
     - "!.env.example"
     - "!README.md"
+
+resources:
+  Resources:
+    PatientFilesBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ehr-backend-api-patient-files-dev
+        BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: AES256
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins:
+                - "*"
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+              AllowedHeaders:
+                - "*"
