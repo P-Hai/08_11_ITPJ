@@ -1,4 +1,4 @@
-// src/components/CreatePrescriptionForm.js
+// src/components/CreatePrescriptionForm.js - ✅ FIXED VERSION
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "../aws-config";
@@ -94,11 +94,19 @@ function CreatePrescriptionForm({ onSuccess, onCancel }) {
       const token = localStorage.getItem("idToken");
       const user = JSON.parse(localStorage.getItem("user"));
 
-      // Format payload
+      // ✅ FIX: Format payload với medication_name
       const payload = {
         patient_id: formData.patientId,
         doctor_id: user.employeeId || user.username,
-        medications: formData.medications.filter((med) => med.name.trim()),
+        medications: formData.medications
+          .filter((med) => med.name.trim())
+          .map((med) => ({
+            medication_name: med.name, // ✅ Backend yêu cầu medication_name
+            dosage: med.dosage,
+            frequency: med.frequency,
+            duration: med.duration,
+            instructions: med.instructions,
+          })),
       };
 
       // Only add medical_record_id if provided

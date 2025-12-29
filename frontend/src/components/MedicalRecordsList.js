@@ -1,71 +1,153 @@
-// src/components/MedicalRecordsList.js
+// src/components/MedicalRecordsList.js - ✅ REFACTORED WITH PATIENT DROPDOWN
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "../aws-config";
 
 function MedicalRecordsList() {
+  const [patients, setPatients] = useState([]);
+  const [selectedPatientId, setSelectedPatientId] = useState("");
   const [records, setRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [loadingPatients, setLoadingPatients] = useState(true);
   const [error, setError] = useState("");
   const [selectedRecord, setSelectedRecord] = useState(null);
 
+  // Fetch patients on mount
   useEffect(() => {
-    fetchRecords();
+    fetchPatients();
   }, []);
 
-  const fetchRecords = async () => {
+  // Fetch records when patient selected
+  useEffect(() => {
+    if (selectedPatientId) {
+      fetchRecords(selectedPatientId);
+    } else {
+      setRecords([]);
+    }
+  }, [selectedPatientId]);
+
+  const fetchPatients = async () => {
+    try {
+      setLoadingPatients(true);
+      const token = localStorage.getItem("idToken");
+      const response = await axios.get(`${API_BASE_URL}/patients/search`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.data.success) {
+        const patientsData =
+          response.data.data?.patients || response.data.data || [];
+        setPatients(Array.isArray(patientsData) ? patientsData : []);
+      }
+    } catch (err) {
+      console.error("Error fetching patients:", err);
+      setPatients([]);
+    } finally {
+      setLoadingPatients(false);
+    }
+  };
+
+  const fetchRecords = async (patientId) => {
+    setLoading(true);
+    setError("");
     try {
       const token = localStorage.getItem("idToken");
+      const response = await axios.get(
+        `${API_BASE_URL}/medical-records/patient/${patientId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-      // Thử gọi API theo từng patient
-      // Hoặc tạm thời return empty nếu chưa có API
-
-      // CÁCH 1: Nếu có API get by patient
-      // const patientId = 'some-patient-id';
-      // const response = await axios.get(
-      //   `${API_BASE_URL}/medical-records/patient/${patientId}`,
-      //   { headers: { Authorization: `Bearer ${token}` } }
-      // );
-
-      // CÁCH 2: Tạm thời set empty (skip API call)
-      console.log("Medical records API not available yet - showing empty list");
-      setRecords([]);
-      setLoading(false);
-      return;
-
-      // Uncomment khi có API:
-      // if (response.data.success) {
-      //   const recordsData = response.data.data?.records || response.data.data || [];
-      //   setRecords(Array.isArray(recordsData) ? recordsData : []);
-      // }
+      if (response.data.success) {
+        const recordsData = response.data.data?.records || [];
+        setRecords(Array.isArray(recordsData) ? recordsData : []);
+      }
     } catch (err) {
       console.error("Error fetching records:", err);
-      // Không hiển thị error, chỉ log
-      console.log("API call failed, showing empty list");
+      setError(err.response?.data?.message || "Failed to load medical records");
       setRecords([]);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="text-center py-8">
-        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <p className="mt-2 text-gray-600">Loading medical records...</p>
-      </div>
-    );
-  }
-
   return (
-    <div>
+    <div className="space-y-6">
+      {/* Patient Selection */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Select Patient to View Medical Records
+        </label>
+        {loadingPatients ? (
+          <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+            Loading patients...
+          </div>
+        ) : (
+          <select
+            value={selectedPatientId}
+            onChange={(e) => setSelectedPatientId(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">-- Select a patient --</option>
+            {patients.map((patient) => (
+              <option key={patient.patient_id} value={patient.patient_id}>
+                {patient.full_name} - DOB:{" "}
+                {patient.date_of_birth
+                  ? new Date(patient.date_of_birth).toLocaleDateString()
+                  : "N/A"}{" "}
+                - Phone: {patient.phone || "N/A"}
+              </option>
+            ))}
+          </select>
+        )}
+        {patients.length === 0 && !loadingPatients && (
+          <p className="text-sm text-gray-500 mt-1">
+            No patients found. Please register patients first.
+          </p>
+        )}
+      </div>
+
+      {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
           {error}
         </div>
       )}
 
-      {records.length === 0 ? (
+      {/* Loading State */}
+      {loading && (
+        <div className="text-center py-8">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <p className="mt-2 text-gray-600">Loading medical records...</p>
+        </div>
+      )}
+
+      {/* No Patient Selected */}
+      {!loading && !selectedPatientId && !loadingPatients && (
+        <div className="text-center py-12 bg-gray-50 rounded-lg">
+          <svg
+            className="w-16 h-16 mx-auto mb-4 text-gray-300"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+          <p className="text-gray-500 text-lg">Please select a patient</p>
+          <p className="text-gray-400 text-sm mt-2">
+            Choose a patient to view their medical records
+          </p>
+        </div>
+      )}
+
+      {/* Empty Records */}
+      {!loading && selectedPatientId && records.length === 0 && (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <svg
             className="w-16 h-16 mx-auto mb-4 text-gray-300"
@@ -82,10 +164,13 @@ function MedicalRecordsList() {
           </svg>
           <p className="text-gray-500 text-lg">No medical records found</p>
           <p className="text-gray-400 text-sm mt-2">
-            Click "Create New Record" to add a medical record
+            This patient has no medical records yet
           </p>
         </div>
-      ) : (
+      )}
+
+      {/* Records List */}
+      {!loading && selectedPatientId && records.length > 0 && (
         <div className="space-y-4">
           {records.map((record) => (
             <div
@@ -97,12 +182,13 @@ function MedicalRecordsList() {
                 <div className="flex-1">
                   <div className="flex items-center gap-4 mb-2">
                     <h3 className="text-lg font-semibold text-gray-900">
-                      Patient: {record.patient_name || record.patient_id}
-                    </h3>
-                    <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                      Visit Date:{" "}
                       {new Date(
                         record.visit_date || record.created_at
                       ).toLocaleDateString()}
+                    </h3>
+                    <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                      {record.status}
                     </span>
                   </div>
 
@@ -114,19 +200,14 @@ function MedicalRecordsList() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Diagnosis</p>
+                      <p className="text-xs text-gray-500">Doctor</p>
                       <p className="text-sm text-gray-700">
-                        {record.diagnosis?.substring(0, 100)}
-                        {record.diagnosis?.length > 100 ? "..." : ""}
+                        {record.doctor_name || "N/A"}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <span>
-                      Doctor: {record.doctor_name || record.doctor_id}
-                    </span>
-                    <span>•</span>
                     <span>
                       Record ID: {record.record_id?.substring(0, 8)}...
                     </span>
@@ -202,15 +283,15 @@ function MedicalRecordsList() {
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-500">Patient ID</label>
+                    <label className="text-sm text-gray-500">Doctor</label>
                     <p className="font-medium text-gray-900">
-                      {selectedRecord.patient_id}
+                      {selectedRecord.doctor_name || "N/A"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-500">Doctor</label>
+                    <label className="text-sm text-gray-500">Status</label>
                     <p className="font-medium text-gray-900">
-                      {selectedRecord.doctor_name || selectedRecord.doctor_id}
+                      {selectedRecord.status}
                     </p>
                   </div>
                 </div>
@@ -226,54 +307,38 @@ function MedicalRecordsList() {
                 </p>
               </div>
 
-              {/* Present Illness */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
-                  History of Present Illness
-                </h3>
-                <p className="text-gray-700 whitespace-pre-wrap">
-                  {selectedRecord.present_illness}
-                </p>
-              </div>
-
-              {/* Physical Examination */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
-                  Physical Examination
-                </h3>
-                <p className="text-gray-700 whitespace-pre-wrap">
-                  {selectedRecord.physical_examination}
-                </p>
-              </div>
-
               {/* Diagnosis */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
-                  Diagnosis
-                </h3>
-                <p className="text-gray-700 whitespace-pre-wrap">
-                  {selectedRecord.diagnosis}
-                </p>
-              </div>
-
-              {/* Treatment Plan */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
-                  Treatment Plan
-                </h3>
-                <p className="text-gray-700 whitespace-pre-wrap">
-                  {selectedRecord.treatment_plan}
-                </p>
-              </div>
-
-              {/* Notes */}
-              {selectedRecord.notes && (
+              {selectedRecord.diagnosis && (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
-                    Additional Notes
+                    Diagnosis
                   </h3>
                   <p className="text-gray-700 whitespace-pre-wrap">
-                    {selectedRecord.notes}
+                    {selectedRecord.diagnosis}
+                  </p>
+                </div>
+              )}
+
+              {/* Treatment Plan */}
+              {selectedRecord.treatment_plan && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
+                    Treatment Plan
+                  </h3>
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {selectedRecord.treatment_plan}
+                  </p>
+                </div>
+              )}
+
+              {/* Notes */}
+              {selectedRecord.doctor_notes && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
+                    Doctor's Notes
+                  </h3>
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {selectedRecord.doctor_notes}
                   </p>
                 </div>
               )}
