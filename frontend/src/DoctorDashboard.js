@@ -148,14 +148,14 @@ function DoctorDashboard() {
         <div className="max-w-7xl mx-auto px-4">
           <nav className="flex space-x-8 overflow-x-auto">
             {[
-              ["overview", "📊 Overview"],
-              ["patients", "👥 Patients"],
-              ["records", "📋 Medical Records"],
-              ["prescriptions", "💊 Prescriptions"],
-              ["vitals", "❤️ Record Vital Signs"],
-              ["vitals-history", "📊 Vital Signs History"],
-              ["patientFiles", "📁 Patient Files"],
-              ["biometric", "🔐 Biometric Setup"],
+              ["overview", "Overview"],
+              ["patients", "Patients"],
+              ["records", "Medical Records"],
+              ["prescriptions", "Prescriptions"],
+              ["vitals", "Record Vital Signs"],
+              ["vitals-history", "Vital Signs History"],
+              ["patientFiles", "Patient Files"],
+              ["biometric", "Biometric Setup"],
             ].map(([key, label]) => (
               <button
                 key={key}
@@ -307,9 +307,7 @@ function DoctorDashboard() {
             {/* Loading Indicator */}
             {loadingPatients && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <p className="text-blue-700 text-center">
-                  🔄 Loading patients...
-                </p>
+                <p className="text-blue-700 text-center">Loading patients...</p>
               </div>
             )}
 
@@ -317,8 +315,8 @@ function DoctorDashboard() {
             {!loadingPatients && patients.length === 0 && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                 <p className="text-yellow-700 text-center">
-                  ⚠️ No patients available. Please check your login credentials
-                  or contact support.
+                  No patients available. Please check your login credentials or
+                  contact support.
                 </p>
               </div>
             )}
@@ -327,7 +325,7 @@ function DoctorDashboard() {
             {!loadingPatients && patients.length > 0 && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                 <p className="text-green-700 text-center">
-                  ✅ Found {patients.length} patient
+                  Found {patients.length} patient
                   {patients.length !== 1 ? "s" : ""}
                 </p>
               </div>

@@ -10,11 +10,12 @@
     "@aws-sdk/client-ses": "^3.956.0",
     "@simplewebauthn/server": "^9.0.3",
     "@simplewebauthn/types": "^9.0.1",
-    "aws-sdk": "^2.1692.0",
+    "aws-sdk": "^2.1693.0",
     "dotenv": "^16.6.1",
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^3.2.0",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "serverless": "^3.40.0",
