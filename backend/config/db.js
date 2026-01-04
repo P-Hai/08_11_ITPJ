@@ -5,12 +5,30 @@ let pool;
 
 const getPool = () => {
   if (!pool) {
+    // DEBUG: Log environment variables
+    const pwd = process.env.DB_PASSWORD || "EHRdb#2025Secure!";
+    console.log("[DB CONFIG] Connection settings:");
+    console.log("  DB_HOST env:", process.env.DB_HOST);
+    console.log("  DB_USER env:", process.env.DB_USER);
+    console.log(
+      "  DB_PASSWORD env set:",
+      !!process.env.DB_PASSWORD,
+      "length:",
+      process.env.DB_PASSWORD?.length
+    );
+    console.log(
+      "  Using password:",
+      pwd === "EHRdb#2025Secure!" ? "HARDCODED FALLBACK" : "FROM ENV"
+    );
+
     const config = {
-      host: process.env.DB_HOST,
+      host:
+        process.env.DB_HOST ||
+        "ehr-system-db.c1keewkss49f.ap-southeast-1.rds.amazonaws.com",
       port: parseInt(process.env.DB_PORT || "5432"),
-      database: process.env.DB_NAME,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME || "ehr_production",
+      user: process.env.DB_USER || "postgres",
+      password: pwd,
       max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 5000, // ✅ Giảm xuống 5s (từ 10s)

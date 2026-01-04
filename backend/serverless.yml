@@ -20,11 +20,13 @@ provider:
     DB_PORT: ${env:DB_PORT}
     DB_NAME: ${env:DB_NAME}
     DB_USER: ${env:DB_USER}
-    DB_PASSWORD: ${env:DB_PASSWORD}
+    DB_PASSWORD: "Hai12345"
     JWT_SECRET: ${self:custom.JWT_SECRET}
-    WEBAUTHN_RP_ID: localhost
-    WEBAUTHN_ORIGIN: http://localhost:3000
+    WEBAUTHN_RP_ID: ${env:WEBAUTHN_RP_ID, 'localhost'}
+    WEBAUTHN_ORIGIN: ${env:WEBAUTHN_ORIGIN, 'http://localhost:3000'}
+    SES_FROM_EMAIL: ${env:SES_FROM_EMAIL, 'phuchai5904@gmail.com'}
     NODE_ENV: ${self:provider.stage}
+    DEPLOY_TS: 2026-01-02-113800
 
     # ADDED
     PATIENT_FILES_BUCKET: ehr-backend-api-patient-files-dev
@@ -213,6 +215,35 @@ functions:
       - httpApi:
           path: /users/{id}/reset-password
           method: post
+
+  # ===== DEBUG ENDPOINTS (for troubleshooting) =====
+  debugGetAllUsers:
+    handler: handlers/debug.getAllUsers
+    events:
+      - httpApi:
+          path: /debug/users
+          method: get
+
+  debugGetUserByEmail:
+    handler: handlers/debug.getUserByEmail
+    events:
+      - httpApi:
+          path: /debug/user
+          method: get
+
+  debugGetUserByCognitoSub:
+    handler: handlers/debug.getUserByCognitoSub
+    events:
+      - httpApi:
+          path: /debug/cognito-sub/{cognito_sub}
+          method: get
+
+  debugTruncateUsers:
+    handler: handlers/debug.truncateUsers
+    events:
+      - httpApi:
+          path: /debug/truncate-users
+          method: delete
 
   # ===== PATIENTS =====
   createPatient:

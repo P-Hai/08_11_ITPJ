@@ -186,6 +186,14 @@ const finishRegistration = withAuth(async (event) => {
 const startAuthentication = async (event) => {
   try {
     console.log("📥 WebAuthn auth start request");
+    console.log("[DB-CONFIG]", {
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password_len: process.env.DB_PASSWORD
+        ? process.env.DB_PASSWORD.length
+        : 0,
+      database: process.env.DB_NAME,
+    });
 
     const body = JSON.parse(event.body || "{}");
     const username = body.username;
@@ -201,22 +209,21 @@ const startAuthentication = async (event) => {
     let userQuery;
 
     try {
+      console.log("[DB] Executing query to find user...");
       userQuery = await db.query(
-        `SELECT u.user_id, u.email, u.full_name, u.role, u.cognito_sub, u.cognito_username
+        `SELECT u.user_id, u.email, u.full_name, u.role, u.cognito_sub
          FROM users u 
-         WHERE u.cognito_username = $1 OR u.email = $1
+         WHERE u.email = $1
          LIMIT 1`,
         [username]
       );
+      console.log("[DB] Query succeeded, rows:", userQuery.rows.length);
     } catch (dbError) {
-      console.error(
-        "❌ Database query error, trying fallback:",
-        dbError.message
-      );
+      console.error("❌ Database query error:", dbError.message);
 
-      // Fallback: try email only
+      // Try again with fallback
       userQuery = await db.query(
-        `SELECT u.user_id, u.email, u.full_name, u.role, u.cognito_sub, u.cognito_username
+        `SELECT u.user_id, u.email, u.full_name, u.role, u.cognito_sub
          FROM users u 
          WHERE u.email = $1
          LIMIT 1`,

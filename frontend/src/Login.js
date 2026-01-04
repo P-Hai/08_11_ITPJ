@@ -72,8 +72,12 @@ function Login() {
 
         if (mfaRequiredRoles.includes(userRole)) {
           setPendingUserData(data);
-          setMfaUserId(data.user.userId);
+          // Use user_id from response, fallback to userId, fallback to sub
+          const userIdForMFA =
+            data.user.user_id || data.user.userId || data.user.sub;
+          setMfaUserId(userIdForMFA);
           setMfaUserEmail(data.user.email);
+          console.log("🔐 MFA required for user:", userIdForMFA, userRole);
           setShowMFA(true);
           setSuccess("Verification required");
           setLoading(false);
@@ -462,7 +466,7 @@ function Login() {
           )}
         </form>
 
-        {/* Demo Accounts */}
+        {/* Demo Accounts
         <div className="mt-8 pt-6 border-t border-gray-200">
           <p className="text-sm text-gray-600 text-center mb-3">
             Demo accounts:
@@ -479,7 +483,7 @@ function Login() {
               </span>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Biometric Status */}
         {biometricSupported && (

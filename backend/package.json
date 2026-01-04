@@ -15,7 +15,7 @@
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^3.2.0",
     "pg": "^8.16.3",
-    "uuid": "^13.0.0"
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
     "serverless": "^3.40.0",

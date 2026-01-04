@@ -1,0 +1,21 @@
+﻿===========================================
+  DEPLOYMENT INFORMATION
+===========================================
+Bucket Name: ehr-frontend-8416
+S3 Website URL (HTTP): http://ehr-frontend-8416.s3-website-ap-southeast-1.amazonaws.com
+CloudFront URL (HTTPS): https://
+Distribution ID: 
+Deployed At: 2026-01-04 11:16:49
+
+IMPORTANT:
+- S3 URL is available immediately
+- CloudFront URL needs 15-20 minutes to deploy
+- Use CloudFront URL for production (HTTPS)
+
+NEXT STEPS:
+1. Test S3 URL first: http://ehr-frontend-8416.s3-website-ap-southeast-1.amazonaws.com
+2. Wait for CloudFront deployment
+3. Test CloudFront URL: https://
+4. Update backend CORS with CloudFront URL
+5. Update Cognito callback URLs
+===========================================

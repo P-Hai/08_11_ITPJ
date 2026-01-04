@@ -392,7 +392,7 @@ const getById = withAuth(
             p.cognito_username,
             p.created_at,
             p.updated_at,
-            u.username as created_by_username
+            u.cognito_username as created_by_username
           FROM patients p
           LEFT JOIN users u ON p.created_by = u.user_id
           WHERE p.patient_id = $1
