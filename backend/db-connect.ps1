@@ -12,7 +12,7 @@ $DB_HOST = "ehr-system-db.c1keewkss49f.ap-southeast-1.rds.amazonaws.com"
 $DB_PORT = "5432"
 $DB_NAME = "ehr_production"
 $DB_USER = "postgres"
-$DB_PASSWORD = "EHRdb#2025Secure!"
+$DB_PASSWORD = "Hai12345"
 $SECURITY_GROUP = "sg-0f4696ad446117ed0"
 $REGION = "ap-southeast-1"
 

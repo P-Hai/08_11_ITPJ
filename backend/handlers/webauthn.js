@@ -19,10 +19,35 @@ const cognito = new AWS.CognitoIdentityServiceProvider({
 
 // WebAuthn configuration
 const rpName = "EHR System";
-const rpID = process.env.WEBAUTHN_RP_ID || "localhost";
-const origin = process.env.WEBAUTHN_ORIGIN || "http://localhost:3000";
 
-console.log("🔐 WebAuthn handler loaded with config:", { rpID, origin });
+// ✅ Support multiple origins for both localhost and S3 deployment
+const primaryRpID = process.env.WEBAUTHN_RP_ID || "localhost";
+const primaryOrigin = process.env.WEBAUTHN_ORIGIN || "http://localhost:3000";
+
+// List of allowed origins for flexible deployment
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://ehr-frontend-9266.s3-website-ap-southeast-1.amazonaws.com",
+  // Add more origins as needed
+];
+
+// Function to get appropriate RP ID based on origin
+const getRpID = (origin) => {
+  if (origin?.includes("localhost")) {
+    return "localhost";
+  }
+  if (origin?.includes("s3-website")) {
+    return "ehr-frontend-9266.s3-website-ap-southeast-1.amazonaws.com";
+  }
+  return primaryRpID;
+};
+
+console.log("🔐 WebAuthn handler loaded with primary config:", {
+  primaryRpID,
+  primaryOrigin,
+  allowedOrigins,
+});
 
 /**
  * POST /webauthn/register/start
@@ -56,9 +81,13 @@ const startRegistration = withAuth(async (event) => {
       };
     });
 
+    // Get the current origin from request headers (will be used in verification)
+    const currentOrigin = event.headers?.origin || primaryOrigin;
+    const currentRpID = getRpID(currentOrigin);
+
     const options = await generateRegistrationOptions({
       rpName: rpName,
-      rpID: rpID,
+      rpID: currentRpID,
       userID: dbUser.user_id,
       userName: dbUser.email,
       userDisplayName: dbUser.full_name,
@@ -118,11 +147,22 @@ const finishRegistration = withAuth(async (event) => {
 
     const expectedChallenge = challengeQuery.rows[0].challenge;
 
+    // Get current origin from request headers
+    const currentOrigin = event.headers?.origin || primaryOrigin;
+    const currentRpID = getRpID(currentOrigin);
+
+    console.log(
+      "🔐 Verifying registration with origin:",
+      currentOrigin,
+      "RP ID:",
+      currentRpID
+    );
+
     const verification = await verifyRegistrationResponse({
       response: body,
       expectedChallenge: expectedChallenge,
-      expectedOrigin: origin,
-      expectedRPID: rpID,
+      expectedOrigin: currentOrigin,
+      expectedRPID: currentRpID,
     });
 
     if (!verification.verified) {
@@ -262,8 +302,12 @@ const startAuthentication = async (event) => {
       };
     });
 
+    // Get current origin from request headers
+    const currentOrigin = event.headers?.origin || primaryOrigin;
+    const currentRpID = getRpID(currentOrigin);
+
     const options = await generateAuthenticationOptions({
-      rpID: rpID,
+      rpID: currentRpID,
       allowCredentials: allowCredentials,
       userVerification: "preferred",
     });
@@ -346,11 +390,22 @@ const finishAuthentication = async (event) => {
 
     const credential = credQuery.rows[0];
 
+    // Get current origin from request headers
+    const currentOrigin = event.headers?.origin || primaryOrigin;
+    const currentRpID = getRpID(currentOrigin);
+
+    console.log(
+      "🔐 Verifying authentication with origin:",
+      currentOrigin,
+      "RP ID:",
+      currentRpID
+    );
+
     const verification = await verifyAuthenticationResponse({
       response: body,
       expectedChallenge: expectedChallenge,
-      expectedOrigin: origin,
-      expectedRPID: rpID,
+      expectedOrigin: currentOrigin,
+      expectedRPID: currentRpID,
       authenticator: {
         credentialID: Buffer.from(credential.credential_id, "base64"),
         credentialPublicKey: Buffer.from(credential.public_key, "base64"),

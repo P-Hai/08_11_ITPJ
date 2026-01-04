@@ -1,13 +1,13 @@
 ﻿// scripts/create-patient-for-cognito-user.js
 const { Pool } = require("pg");
-const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4 } = require("uuid");
 
 const pool = new Pool({
   host: "ehr-system-db.c1keewkss49f.ap-southeast-1.rds.amazonaws.com",
   port: 5432,
   database: "ehr_production",
   user: "postgres",
-  password: "EHRdb#2025Secure!",
+  password: "Hai12345",
   ssl: { rejectUnauthorized: false },
 });
 
@@ -46,7 +46,7 @@ async function createPatientRecord() {
         "patient12345@example.com",
         "89aa25fc-2021-70e6-1c2a-d1d7c72d86ee",
         "patient12345",
-        createdBy
+        createdBy,
       ]
     );
 
@@ -60,7 +60,6 @@ async function createPatientRecord() {
 
     console.log("\nVerification:");
     console.table(verify.rows);
-
   } catch (error) {
     console.error("Error:", error.message);
   } finally {

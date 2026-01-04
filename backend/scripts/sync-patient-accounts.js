@@ -12,7 +12,7 @@ const pool = new Pool({
   port: 5432,
   database: "ehr_production",
   user: "postgres",
-  password: "EHRdb#2025Secure!",
+  password: "Hai12345",
   ssl: { rejectUnauthorized: false },
 });
 
@@ -84,12 +84,16 @@ async function syncPatientAccounts() {
              WHERE patient_id = $3`,
             [cognitoSub, username, patient.patient_id]
           );
-          console.log(`   Updated patient_id ${patient.patient_id} with Cognito credentials`);
+          console.log(
+            `   Updated patient_id ${patient.patient_id} with Cognito credentials`
+          );
           syncedCount++;
         }
       } else {
         console.log(`   No matching patient found in database`);
-        console.log(`   Suggestion: This user exists in Cognito but has no patient record`);
+        console.log(
+          `   Suggestion: This user exists in Cognito but has no patient record`
+        );
         notFoundCount++;
       }
     }
@@ -133,7 +137,9 @@ async function syncPatientAccounts() {
     if (orphanedPatients.rows.length > 0) {
       console.log("\nPatients without Cognito accounts:");
       console.table(orphanedPatients.rows);
-      console.log("\nThese patients cannot login. Consider creating Cognito accounts for them.");
+      console.log(
+        "\nThese patients cannot login. Consider creating Cognito accounts for them."
+      );
     }
 
     console.log("\nSynchronization completed successfully!\n");

@@ -22,8 +22,9 @@ provider:
     DB_USER: ${env:DB_USER}
     DB_PASSWORD: "Hai12345"
     JWT_SECRET: ${self:custom.JWT_SECRET}
-    WEBAUTHN_RP_ID: ${env:WEBAUTHN_RP_ID, 'localhost'}
-    WEBAUTHN_ORIGIN: ${env:WEBAUTHN_ORIGIN, 'http://localhost:3000'}
+    # 🔐 WebAuthn Configuration for S3 deployment
+    WEBAUTHN_RP_ID: ${env:WEBAUTHN_RP_ID, 'ehr-frontend-9266.s3-website-ap-southeast-1.amazonaws.com'}
+    WEBAUTHN_ORIGIN: ${env:WEBAUTHN_ORIGIN, 'http://ehr-frontend-9266.s3-website-ap-southeast-1.amazonaws.com'}
     SES_FROM_EMAIL: ${env:SES_FROM_EMAIL, 'phuchai5904@gmail.com'}
     NODE_ENV: ${self:provider.stage}
     DEPLOY_TS: 2026-01-02-113800

@@ -1,22 +1,51 @@
-// src/components/PatientDetailModal.js
+// src/components/PatientDetailModal.js - FIXED VERSION
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "../aws-config";
-import UpdatePatientForm from "./UpdatePatientForm"; // ← THÊM IMPORT
+import UpdatePatientForm from "./UpdatePatientForm";
 
 function PatientDetailModal({ patientId, onClose }) {
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isEditing, setIsEditing] = useState(false); // ← THÊM STATE
+  const [isEditing, setIsEditing] = useState(false);
+  const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
+    getUserRole();
     fetchPatientDetails();
   }, [patientId]);
 
+  const getUserRole = () => {
+    try {
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        setUserRole(user.role || null);
+      }
+    } catch (err) {
+      console.error("Error getting user role:", err);
+    }
+  };
+
+  const canViewSensitiveData = () => {
+    const allowedRoles = ["admin", "doctor", "nurse", "receptionist"];
+    return userRole && allowedRoles.includes(userRole.toLowerCase());
+  };
+
   const fetchPatientDetails = async () => {
     try {
+      setLoading(true);
+      setError("");
+
       const token = localStorage.getItem("idToken");
+
+      console.log("🔍 Fetching patient details:", {
+        patientId,
+        token: token ? "exists" : "missing",
+        apiUrl: `${API_BASE_URL}/patients/${patientId}`,
+      });
+
       const response = await axios.get(
         `${API_BASE_URL}/patients/${patientId}`,
         {
@@ -26,11 +55,24 @@ function PatientDetailModal({ patientId, onClose }) {
         }
       );
 
+      console.log("📦 API Response:", response.data);
+
       if (response.data.success) {
-        setPatient(response.data.data);
+        const patientData = response.data.data;
+        console.log("✅ Patient data received:", {
+          patient_id: patientData.patient_id,
+          full_name: patientData.full_name,
+          national_id: patientData.national_id ? "✅ Present" : "❌ Missing",
+          insurance_number: patientData.insurance_number
+            ? "✅ Present"
+            : "❌ Missing",
+        });
+        setPatient(patientData);
+      } else {
+        setError("Failed to load patient details");
       }
     } catch (err) {
-      console.error("Error fetching patient details:", err);
+      console.error("❌ Error fetching patient details:", err);
       setError(err.response?.data?.message || "Failed to load patient details");
     } finally {
       setLoading(false);
@@ -39,7 +81,7 @@ function PatientDetailModal({ patientId, onClose }) {
 
   const handleUpdateSuccess = () => {
     setIsEditing(false);
-    fetchPatientDetails(); // Refresh data
+    fetchPatientDetails();
   };
 
   return (
@@ -80,7 +122,6 @@ function PatientDetailModal({ patientId, onClose }) {
             </div>
           ) : patient ? (
             <>
-              {/* ✅ THÊM: Show Edit Form hoặc View Details */}
               {isEditing ? (
                 <UpdatePatientForm
                   patient={patient}
@@ -167,30 +208,77 @@ function PatientDetailModal({ patientId, onClose }) {
                     </div>
                   </div>
 
-                  {/* Insurance Information */}
-                  {(patient.national_id || patient.insurance_number) && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
-                        Insurance Information
-                      </h3>
+                  {/* ✅ THÊM MỚI: Thông tin định danh */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
+                      Thông tin định danh
+                      {canViewSensitiveData() && (
+                        <span className="text-xs text-green-600 ml-2 bg-green-50 px-2 py-1 rounded">
+                          ✓ Dữ liệu đã giải mã
+                        </span>
+                      )}
+                    </h3>
+
+                    {canViewSensitiveData() ? (
                       <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm text-gray-500">
-                            National ID
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                          <label className="text-sm text-blue-600 font-semibold block mb-2">
+                            🆔 Số CCCD/CMND
                           </label>
-                          <p className="font-medium text-gray-900">
-                            {patient.national_id || "N/A"}
+                          <p className="font-mono text-lg font-bold text-gray-900">
+                            {patient.national_id || (
+                              <span className="text-gray-400 text-base font-normal">
+                                Chưa có thông tin
+                              </span>
+                            )}
                           </p>
+                          {patient.national_id && (
+                            <p className="text-xs text-blue-500 mt-2">
+                              ✓ Dữ liệu gốc đã được giải mã từ database
+                            </p>
+                          )}
                         </div>
-                        <div>
-                          <label className="text-sm text-gray-500">
-                            Insurance Number
+
+                        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                          <label className="text-sm text-green-600 font-semibold block mb-2">
+                            🏥 Số Bảo hiểm Y tế
                           </label>
-                          <p className="font-medium text-gray-900">
-                            {patient.insurance_number || "N/A"}
+                          <p className="font-mono text-lg font-bold text-gray-900">
+                            {patient.insurance_number || (
+                              <span className="text-gray-400 text-base font-normal">
+                                Chưa có thông tin
+                              </span>
+                            )}
                           </p>
+                          {patient.insurance_number && (
+                            <p className="text-xs text-green-500 mt-2">
+                              ✓ Dữ liệu gốc đã được giải mã từ database
+                            </p>
+                          )}
                         </div>
                       </div>
+                    ) : (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <p className="text-sm text-yellow-800">
+                          🔒 Bạn không có quyền xem thông tin nhạy cảm (CCCD và
+                          BHYT).
+                          <br />
+                          Chỉ Admin, Doctor, Nurse và Receptionist mới có quyền
+                          này.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Cognito Username */}
+                  {patient.cognito_username && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <label className="text-sm text-gray-600 font-semibold block mb-1">
+                        Tài khoản đăng nhập
+                      </label>
+                      <p className="font-mono text-gray-900">
+                        {patient.cognito_username}
+                      </p>
                     </div>
                   )}
 
@@ -220,6 +308,16 @@ function PatientDetailModal({ patientId, onClose }) {
                             : "N/A"}
                         </p>
                       </div>
+                      {patient.created_by_username && (
+                        <div className="col-span-2">
+                          <label className="text-sm text-gray-500">
+                            Created By
+                          </label>
+                          <p className="font-medium text-gray-900">
+                            {patient.created_by_username}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -230,18 +328,17 @@ function PatientDetailModal({ patientId, onClose }) {
 
         {/* Footer */}
         <div className="bg-gray-50 px-6 py-4 flex justify-between rounded-b-lg sticky bottom-0">
-          {/* ✅ THÊM: Edit button cho Receptionist */}
-          {!isEditing && patient && (
+          {!isEditing && patient && userRole === "receptionist" && (
             <button
               onClick={() => setIsEditing(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
             >
               Edit Patient
             </button>
           )}
           <button
             onClick={onClose}
-            className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium ml-auto"
+            className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium ml-auto transition-colors"
           >
             Close
           </button>

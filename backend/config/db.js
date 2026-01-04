@@ -6,7 +6,7 @@ let pool;
 const getPool = () => {
   if (!pool) {
     // DEBUG: Log environment variables
-    const pwd = process.env.DB_PASSWORD || "EHRdb#2025Secure!";
+    const pwd = process.env.DB_PASSWORD || "Hai12345";
     console.log("[DB CONFIG] Connection settings:");
     console.log("  DB_HOST env:", process.env.DB_HOST);
     console.log("  DB_USER env:", process.env.DB_USER);
@@ -18,7 +18,7 @@ const getPool = () => {
     );
     console.log(
       "  Using password:",
-      pwd === "EHRdb#2025Secure!" ? "HARDCODED FALLBACK" : "FROM ENV"
+      pwd === "Hai12345" ? "HARDCODED FALLBACK" : "FROM ENV"
     );
 
     const config = {

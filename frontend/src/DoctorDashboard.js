@@ -127,11 +127,9 @@ function DoctorDashboard() {
       <header className="bg-blue-600 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold">
-              EHR System - Doctor Dashboard
-            </h1>
+            <h1 className="text-2xl font-bold">DOCTOR DASHBOARD</h1>
             <p className="text-sm text-blue-100">
-              Welcome, {user?.full_name || user?.name || "Doctor"}
+              Xin chào, {user?.full_name || user?.name || "Doctor"}
             </p>
           </div>
           <button

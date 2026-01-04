@@ -19,8 +19,8 @@ function AdminDashboard() {
       <header className="bg-purple-600 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold">EHR System - Admin Dashboard</h1>
-            <p className="text-sm text-purple-100">Welcome, {user.name}</p>
+            <h1 className="text-2xl font-bold">ADMIN DASHBOARD</h1>
+            <p className="text-sm text-purple-100">XIN CHÀO, {user.name}</p>
           </div>
           <button
             onClick={handleLogout}

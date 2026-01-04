@@ -6,7 +6,7 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Configuration
-$password = "EHRdb#2025Secure!"
+$password = "Hai12345"
 $host = "ehr-system-db.c1keewkss49f.ap-southeast-1.rds.amazonaws.com"
 $dbname = "ehr_production"
 $user = "postgres"  # CORRECTED USERNAME
